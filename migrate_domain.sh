@@ -24,7 +24,7 @@ echo "---------------------------------------------------"
 # 1. Создание конфига Nginx
 echo "📝 Создание конфигурации Nginx..."
 
-sudo bash -c "cat <<EOF > $CONF_FILE
+cat <<EOF > /tmp/bot_nginx.conf
 server {
     listen 80;
     server_name $DOMAIN;
@@ -51,7 +51,9 @@ server {
     access_log /var/log/nginx/${APP_NAME}_access.log;
     error_log /var/log/nginx/${APP_NAME}_error.log;
 }
-EOF"
+EOF
+
+sudo mv /tmp/bot_nginx.conf $CONF_FILE
 
 # 2. Активация конфига
 echo "🔗 Активация конфигурации..."
