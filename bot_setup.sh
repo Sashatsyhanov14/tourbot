@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Скрипт быстрой настройки основного бота
+# Скрипт ФИНАЛЬНОЙ настройки бота (Bot2)
 # Использование: ./bot_setup.sh
 
 echo "---------------------------------------------------"
@@ -11,17 +11,21 @@ echo "---------------------------------------------------"
 read -p "Вставьте Токен (от @BotFather): " BOT_TOKEN
 read -p "Вставьте Ключ OpenRouter (sk-or-v1-...): " OPENROUTER_KEY
 
-# 2. Подтягиваем остальные данные из текущего файла (если они есть)
+# 2. Идем СТРОГО в папку бота
 cd /root/bot2/bot
+
+# 3. Подтягиваем остальные данные из старого .env (если он есть)
 if [ -f .env ]; then
     SUPABASE_URL=$(grep '^SUPABASE_URL=' .env | cut -d '=' -f2)
     SUPABASE_KEY=$(grep '^SUPABASE_SERVICE_ROLE_KEY=' .env | cut -d '=' -f2)
+    echo "✅ Данные Supabase подтянуты."
 else
-    read -p "SUPABASE_URL (если файла нет): " SUPABASE_URL
-    read -p "SUPABASE_KEY (если файла нет): " SUPABASE_KEY
+    echo "⚠️ Старый .env не найден. Введите данные вручную:"
+    read -p "SUPABASE_URL: " SUPABASE_URL
+    read -p "SUPABASE_KEY: " SUPABASE_KEY
 fi
 
-# 3. Создание идеального .env
+# 4. Создание ИДЕАЛЬНОГО .env СТРОГО В ПАПКЕ /root/bot2/bot/
 echo "📝 Перезапись .env..."
 cat <<EOF > .env
 BOT_TOKEN=$BOT_TOKEN
@@ -32,12 +36,12 @@ WEBAPP_URL=https://tour.ticaretai.tr
 PORT=3002
 EOF
 
-# 4. Перезапуск процесса
+# 5. Перезапуск процесса
 echo "⚙️ Перезапуск бота..."
 pm2 restart bot2
 pm2 save
 
 echo "---------------------------------------------------"
 echo "✅ ГОТОВО! Бот настроен и запущен."
-echo "Напишите боту в Telegram, чтобы проверить связь."
+echo "Пробуйте отправить ему /start в Telegram."
 echo "---------------------------------------------------"
