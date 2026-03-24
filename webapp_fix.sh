@@ -9,11 +9,13 @@ echo "---------------------------------------------------"
 echo "🛠  Настройка WebApp (Vite + Supabase)..."
 echo "---------------------------------------------------"
 
-# Запрос данных (если их нет в .env бота)
+# Запрос данных (извлекаем из .env бота без ошибок)
 cd /root/bot2/bot
 if [ -f .env ]; then
-    source .env
-    echo "✅ Данные из bot/.env подтянуты."
+    # Надёжный способ считать переменную из .env без 'export'
+    SUPABASE_URL=$(grep '^SUPABASE_URL=' .env | cut -d '=' -f2)
+    SUPABASE_SERVICE_ROLE_KEY=$(grep '^SUPABASE_SERVICE_ROLE_KEY=' .env | cut -d '=' -f2)
+    echo "✅ Данные из bot/.env успешно извлечены."
 else
     echo "❌ bot/.env не найден. Введите данные вручную:"
     read -p "SUPABASE_URL: " SUPABASE_URL
