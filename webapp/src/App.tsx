@@ -148,7 +148,8 @@ const App: React.FC = () => {
         setLang(userLang);
         tg.ready();
         tg.expand();
-        await fetchUserData(tgUser.id);
+        // Автоматически входим по ID из Telegram
+        await fetchUserData(tgUser.id, tgUser.first_name, tgUser.username);
       } else {
         setLoading(false);
       }
@@ -158,12 +159,29 @@ const App: React.FC = () => {
 
   const t = translations[lang] || translations.en;
 
-  const fetchUserData = async (tgId: number) => {
+  const fetchUserData = async (tgId: number, firstName?: string, username?: string) => {
     try {
-      const { data: userData } = await supabase.from('users').select('*').eq('telegram_id', tgId).single();
-      if (userData) {
-        setUser(userData);
-        if (userData.role === 'founder' || userData.role === 'manager') {
+      setLoading(true);
+      const { data: userData, error } = await supabase.from('users').select('*').eq('telegram_id', tgId).single();
+
+      let currentUser = userData;
+
+      if (!userData && error && tg?.initDataUnsafe?.user) {
+        // Если пользователя нет, но мы в Telegram — создаем его
+        const newUser = {
+          telegram_id: tgId,
+          first_name: firstName || 'User',
+          username: username || '',
+          balance: 0,
+          role: 'client'
+        };
+        const { data: created } = await supabase.from('users').insert(newUser).select().single();
+        if (created) currentUser = created;
+      }
+
+      if (currentUser) {
+        setUser(currentUser);
+        if (currentUser.role === 'founder' || currentUser.role === 'manager') {
           setActiveTab('stats');
         }
 
