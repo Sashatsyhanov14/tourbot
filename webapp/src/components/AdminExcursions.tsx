@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
-const AdminExcursions: React.FC<{ t: any }> = ({ t }) => {
+const AdminExcursions: React.FC<{ t?: any }> = () => {
     const [excursions, setExcursions] = useState<any[]>([]);
     const [isEditing, setIsEditing] = useState<any>(null);
     const [loading, setLoading] = useState(true);

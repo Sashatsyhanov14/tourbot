@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
-const AdminRequests: React.FC<{ t: any }> = ({ t }) => {
+const AdminRequests: React.FC<{ t?: any }> = () => {
     const [requests, setRequests] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
