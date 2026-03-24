@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: 'excursion-bot',
+      name: 'bot2',
       script: 'npm',
       args: 'start',
       cwd: './bot',
