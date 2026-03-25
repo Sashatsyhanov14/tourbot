@@ -11,8 +11,9 @@ echo "---------------------------------------------------"
 read -p "Вставьте Токен (от @BotFather): " BOT_TOKEN
 read -p "Вставьте Ключ OpenRouter (sk-or-v1-...): " OPENROUTER_KEY
 
-# 2. Идем СТРОГО в папку бота
-cd /root/bot2/bot
+# 2. Идем в папку бота (относительно скрипта)
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$SCRIPT_DIR/bot"
 
 # 3. Подтягиваем остальные данные из старого .env (если он есть)
 if [ -f .env ]; then
