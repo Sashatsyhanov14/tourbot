@@ -3,7 +3,9 @@
 # Скрипт настройки ключей на сервере
 # После запуска этот файл НУЖНО удалить!
 
-BOT_DIR="/root/bot2/bot"
+# Определяем путь к папке бота относительно скрипта
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+BOT_DIR="$SCRIPT_DIR/bot"
 mkdir -p "$BOT_DIR"
 
 cat <<'EOF' > "$BOT_DIR/.env"
