@@ -232,25 +232,33 @@ const App: React.FC = () => {
   if (loading) return <div className="text-center mt-20 text-slate-400 font-medium animate-pulse">{t.loading}</div>;
 
   if (!user) {
+    // Дебаг-экран: показываем что именно приходит от Telegram
+    const debugInfo = {
+      hasTg: !!window.Telegram?.WebApp,
+      initData: window.Telegram?.WebApp?.initData?.substring(0, 80) || 'EMPTY',
+      user: JSON.stringify(window.Telegram?.WebApp?.initDataUnsafe?.user || null),
+    };
     return (
       <div className="bg-[#0f0f11] min-h-screen flex items-center justify-center p-6 text-slate-200">
-        <div className="glass-card p-8 rounded-3xl w-full max-w-sm space-y-6 shadow-2xl border border-white/5">
-          <div className="text-center space-y-3">
-            <h1 className="text-2xl font-bold">{t.loginTitle}</h1>
-            <p className="text-sm text-slate-400">{t.loginDesc}</p>
-          </div>
+        <div className="glass-card p-8 rounded-3xl w-full max-w-sm space-y-4 shadow-2xl border border-white/5">
+          <h1 className="text-xl font-bold text-center">Дебаг</h1>
+          <p className="text-xs text-slate-400">hasTg: <span className="text-green-400">{String(debugInfo.hasTg)}</span></p>
+          <p className="text-xs text-slate-400 break-all">initData: <span className="text-yellow-400">{debugInfo.initData}</span></p>
+          <p className="text-xs text-slate-400 break-all">user: <span className="text-blue-400">{debugInfo.user}</span></p>
+          <hr className="border-white/10" />
+          <p className="text-xs text-center text-slate-500">Введите ID вручную:</p>
           <input
             type="number"
             value={loginInputId}
             onChange={(e) => setLoginInputId(e.target.value)}
-            placeholder={t.loginPlaceholder}
+            placeholder="Ваш Telegram ID"
             className="w-full bg-[#1a1a1d] border border-white/10 rounded-2xl p-4 text-center text-lg focus:border-primary/50 outline-none"
           />
           <button
             onClick={handleManualLogin}
             className="w-full bg-primary/20 text-primary border border-primary/30 py-4 rounded-2xl font-bold hover:bg-primary/30 transition-all active:scale-95"
           >
-            {t.loginBtn}
+            Войти
           </button>
         </div>
       </div>
