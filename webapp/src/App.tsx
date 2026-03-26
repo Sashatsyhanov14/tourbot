@@ -142,15 +142,23 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const init = async () => {
-      if (tg?.initDataUnsafe?.user) {
-        const tgUser = tg.initDataUnsafe.user;
-        const userLang = tgUser.language_code === 'tr' ? 'tr' : (tgUser.language_code === 'ru' ? 'ru' : 'en');
-        setLang(userLang);
+      // Сначала сообщаем Telegram что приложение готово
+      if (tg) {
         tg.ready();
         tg.expand();
-        // Автоматически входим по ID из Telegram
+      }
+
+      // Небольшая задержка, чтобы Telegram успел передать данные
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const tgUser = tg?.initDataUnsafe?.user;
+      if (tgUser?.id) {
+        const userLang = tgUser.language_code === 'tr' ? 'tr' : (tgUser.language_code === 'ru' ? 'ru' : 'en');
+        setLang(userLang);
         await fetchUserData(tgUser.id, tgUser.first_name, tgUser.username);
       } else {
+        // Если открыто не через Telegram — просто не показываем форму входа,
+        // показываем пустой экран загрузки (бот всё равно нужен для работы)
         setLoading(false);
       }
     };
