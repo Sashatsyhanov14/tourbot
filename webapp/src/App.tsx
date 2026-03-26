@@ -153,17 +153,19 @@ const App: React.FC = () => {
 
       let currentUser = userData;
 
-      if (!userData) {
+      // САМОРЕГ: Если пользователя нет в БД — создаем его
+      if (!userData && (fetchErr?.code === 'PGRST116' || !fetchErr)) {
+        const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
         const newUser = {
           telegram_id: tgId,
-          username: username || firstName || `user_${tgId}`,
+          username: username || firstName || tgUser?.first_name || `user_${tgId}`,
           balance: 0,
           role: 'user'
         };
-        const { data: created, error: createErr } = await supabase.from('users').insert(newUser).select().single();
-        if (createErr) {
-          setErrorMsg(`Creation Error: ${createErr.message}`);
-          console.error(createErr);
+        const { data: created, error: regError } = await supabase.from('users').insert(newUser).select().single();
+        if (regError) {
+          setErrorMsg(`Creation Error: ${regError.message}`);
+          console.error(regError);
         }
         if (created) currentUser = created;
       }
@@ -186,42 +188,30 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const init = async () => {
-      if (tg) {
-        tg.ready();
-        tg.expand();
-      }
-
-      // 1. Try URL Parameters (uid=)
-      const params = new URLSearchParams(window.location.search);
-      const uid = params.get('uid');
-      if (uid && !isNaN(parseInt(uid))) {
-        await fetchUserData(parseInt(uid));
-        return;
-      }
-
-      // 2. Try Telegram SDK Polling
+      // 1. Ждем инициализации Telegram SDK (до 5 попыток)
       let tgUser: any = null;
       for (let i = 0; i < 5; i++) {
-        tgUser = tg?.initDataUnsafe?.user;
+        tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
         if (tgUser?.id) break;
         await new Promise(r => setTimeout(r, 200));
-      }
-
-      // 3. Try Raw initData Parsing
-      if (!tgUser?.id && tg?.initData) {
-        try {
-          const paramsRaw = new URLSearchParams(tg.initData);
-          const userStr = paramsRaw.get('user');
-          if (userStr) tgUser = JSON.parse(decodeURIComponent(userStr));
-        } catch {}
       }
 
       if (tgUser?.id) {
         const userLang = tgUser.language_code === 'tr' ? 'tr' : (tgUser.language_code === 'ru' ? 'ru' : 'en');
         setLang(userLang);
+        window.Telegram.WebApp.ready();
+        window.Telegram.WebApp.expand();
+        // Автоматически входим по ID из Telegram
         await fetchUserData(tgUser.id, tgUser.first_name, tgUser.username);
       } else {
-        setLoading(false);
+        // Попытка получить uid из URL параметров (для тестов вне ТГ)
+        const params = new URLSearchParams(window.location.search);
+        const uid = params.get('uid');
+        if (uid && !isNaN(parseInt(uid))) {
+          await fetchUserData(parseInt(uid));
+        } else {
+          setLoading(false);
+        }
       }
     };
     init();
