@@ -137,8 +137,52 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'referral' | 'stats' | 'excursions' | 'requests' | 'faq'>('referral');
   const [referralStats, setReferralStats] = useState({ invited: 0, requests: 0 });
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string>('');
 
   const tg = window.Telegram?.WebApp;
+
+  const fetchUserData = async (tgId: number, firstName?: string, username?: string) => {
+    try {
+      setLoading(true);
+      setErrorMsg('');
+      const { data: userData, error: fetchErr } = await supabase.from('users').select('*').eq('telegram_id', tgId).single();
+
+      if (fetchErr && fetchErr.code !== 'PGRST116') {
+        setErrorMsg(`Database Error: ${fetchErr.message}`);
+      }
+
+      let currentUser = userData;
+
+      if (!userData) {
+        const newUser = {
+          telegram_id: tgId,
+          username: username || firstName || `user_${tgId}`,
+          balance: 0,
+          role: 'user'
+        };
+        const { data: created, error: createErr } = await supabase.from('users').insert(newUser).select().single();
+        if (createErr) {
+          setErrorMsg(`Creation Error: ${createErr.message}`);
+          console.error(createErr);
+        }
+        if (created) currentUser = created;
+      }
+
+      if (currentUser) {
+        setUser(currentUser);
+        if (currentUser.role === 'founder' || currentUser.role === 'manager') {
+          setActiveTab('stats');
+        }
+        const { count: invitedCount } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('referrer_id', tgId);
+        const { count: reqCount } = await supabase.from('requests').select('*', { count: 'exact', head: true }).eq('user_id', tgId);
+        setReferralStats({ invited: invitedCount || 0, requests: reqCount || 0 });
+      }
+    } catch (err: any) {
+      setErrorMsg(`System Error: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const init = async () => {
@@ -147,29 +191,29 @@ const App: React.FC = () => {
         tg.expand();
       }
 
-      // Способ 1: читаем uid из URL параметра (бот прикрепил его к URL кнопки)
-      const urlParams = new URLSearchParams(window.location.search);
-      const uidFromUrl = urlParams.get('uid');
-      if (uidFromUrl && !isNaN(parseInt(uidFromUrl))) {
-        await fetchUserData(parseInt(uidFromUrl));
+      // 1. Try URL Parameters (uid=)
+      const params = new URLSearchParams(window.location.search);
+      const uid = params.get('uid');
+      if (uid && !isNaN(parseInt(uid))) {
+        await fetchUserData(parseInt(uid));
         return;
       }
 
-      // Способ 2: initDataUnsafe (работает на мобильном Telegram)
+      // 2. Try Telegram SDK Polling
       let tgUser: any = null;
       for (let i = 0; i < 5; i++) {
         tgUser = tg?.initDataUnsafe?.user;
         if (tgUser?.id) break;
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise(r => setTimeout(r, 200));
       }
 
-      // Способ 3: парсим сырой initData
+      // 3. Try Raw initData Parsing
       if (!tgUser?.id && tg?.initData) {
         try {
-          const params = new URLSearchParams(tg.initData);
-          const userStr = params.get('user');
+          const paramsRaw = new URLSearchParams(tg.initData);
+          const userStr = paramsRaw.get('user');
           if (userStr) tgUser = JSON.parse(decodeURIComponent(userStr));
-        } catch (e) { /* ignore */ }
+        } catch {}
       }
 
       if (tgUser?.id) {
@@ -185,107 +229,47 @@ const App: React.FC = () => {
 
   const t = translations[lang] || translations.en;
 
-  const [debugError, setDebugError] = useState<string>('');
-
-  const fetchUserData = async (tgId: number, firstName?: string, username?: string) => {
-    try {
-      setLoading(true);
-      setDebugError('');
-      const { data: userData, error: fetchErr } = await supabase.from('users').select('*').eq('telegram_id', tgId).single();
-
-      if (fetchErr && fetchErr.code !== 'PGRST116') { // PGRST116 is "not found", which is fine
-        setDebugError(`Fetch Error: ${fetchErr.message}`);
-      }
-
-      let currentUser = userData;
-
-      if (!userData) {
-        setDebugError('User not found in DB, creating...');
-        const tgUser = tg?.initDataUnsafe?.user;
-        const newUser = {
-          telegram_id: tgId,
-          username: username || tgUser?.username || firstName || `user_${tgId}`,
-          balance: 0,
-          role: 'user'
-        };
-        const { data: created, error: createErr } = await supabase.from('users').insert(newUser).select().single();
-        if (createErr) {
-          setDebugError(`Create Error: ${createErr.message}`);
-          console.error('Create user error:', createErr.message);
-        }
-        if (created) currentUser = created;
-      }
-
-      if (currentUser) {
-        setUser(currentUser);
-        if (currentUser.role === 'founder' || currentUser.role === 'manager') {
-          setActiveTab('stats');
-        }
-
-        const { count: invitedCount } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('referrer_id', tgId);
-        const { count: reqCount } = await supabase.from('requests').select('*', { count: 'exact', head: true }).eq('user_id', tgId);
-
-        setReferralStats({ invited: invitedCount || 0, requests: reqCount || 0 });
-      }
-    } catch (err: any) {
-      setDebugError(`System Error: ${err.message}`);
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleManualLogin = () => {
-    if (loginInputId) fetchUserData(parseInt(loginInputId));
-  };
-
   const handleSendQr = async () => {
     if (!user) return;
     tg?.showAlert("QR-код отправлен в чат!");
     tg?.close();
   };
 
-  if (loading) return <div className="text-center mt-20 text-slate-400 font-medium animate-pulse">{t.loading}</div>;
+  if (loading) return (
+    <div className="min-h-screen bg-[#0f0f11] flex flex-col items-center justify-center space-y-4">
+      <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+      <p className="text-slate-400 font-medium animate-pulse">{t.loading}</p>
+    </div>
+  );
 
   if (!user) {
-    const debugInfo = {
-      hasTg: !!window.Telegram?.WebApp,
-      initData: window.Telegram?.WebApp?.initData?.substring(0, 30) || 'EMPTY',
-      user: JSON.stringify(window.Telegram?.WebApp?.initDataUnsafe?.user || null),
-    };
     return (
       <div className="bg-[#0f0f11] min-h-screen flex items-center justify-center p-6 text-slate-200">
-        <div className="glass-card p-8 rounded-3xl w-full max-w-sm space-y-4 shadow-2xl border border-white/5">
-          <h1 className="text-xl font-bold text-center">⚙️ Debug Panel</h1>
-          
-          {debugError && (
-            <div className="bg-red-500/10 border border-red-500/30 p-3 rounded-xl text-[10px] text-red-400 font-mono break-all">
-              {debugError}
+        <div className="glass-card p-8 rounded-3xl w-full max-w-sm space-y-6 shadow-2xl border border-white/5">
+          <div className="text-center space-y-3">
+            <h1 className="text-2xl font-bold">{t.loginTitle}</h1>
+            <p className="text-sm text-slate-400">{t.loginDesc}</p>
+          </div>
+
+          {errorMsg && (
+            <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-2xl text-xs text-red-400 text-center animate-in fade-in zoom-in duration-300">
+              ⚠️ {errorMsg}
             </div>
           )}
 
-          <div className="space-y-1">
-            <p className="text-[10px] text-slate-500 uppercase font-bold">Bot Status</p>
-            <p className="text-xs text-slate-300">Telegram SDK: <span className={debugInfo.hasTg ? "text-green-400" : "text-red-400"}>{String(debugInfo.hasTg)}</span></p>
-            <p className="text-xs text-slate-300">InitData: <span className="text-yellow-400">{debugInfo.initData}</span></p>
-          </div>
-
-          <hr className="border-white/5" />
-          
-          <div className="space-y-3">
-            <p className="text-xs text-center text-slate-400">Если автовход не сработал, введите ID:</p>
+          <div className="space-y-4">
             <input
               type="number"
               value={loginInputId}
               onChange={(e) => setLoginInputId(e.target.value)}
-              placeholder="Ваш Telegram ID"
-              className="w-full bg-[#1a1a1d] border border-white/10 rounded-2xl p-4 text-center text-lg focus:border-primary/50 outline-none"
+              placeholder={t.loginPlaceholder}
+              className="w-full bg-[#1a1a1d] border border-white/10 rounded-2xl p-4 text-center text-lg focus:border-primary/50 outline-none transition-all"
             />
             <button
-              onClick={handleManualLogin}
-              className="w-full bg-primary/20 text-primary border border-primary/30 py-4 rounded-2xl font-bold hover:bg-primary/30 transition-all active:scale-95"
+              onClick={() => { if (loginInputId) fetchUserData(parseInt(loginInputId)); }}
+              className="w-full bg-primary/20 text-primary border border-primary/30 py-4 rounded-2xl font-bold hover:bg-primary/30 transition-all active:scale-95 shadow-lg shadow-primary/5"
             >
-              Войти
+              {t.loginBtn}
             </button>
           </div>
         </div>
