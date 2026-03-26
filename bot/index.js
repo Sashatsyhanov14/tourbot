@@ -100,7 +100,7 @@ bot.start(async (ctx) => {
 
     await ctx.reply(welcomeText,
         Markup.keyboard([
-            [Markup.button.webApp(webappBtn, process.env.WEBAPP_URL || '')]
+            [Markup.button.webApp(webappBtn, `${process.env.WEBAPP_URL || ''}?uid=${telegramId}`)]
         ]).resize()
     );
 });
