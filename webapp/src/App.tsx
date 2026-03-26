@@ -147,12 +147,25 @@ const App: React.FC = () => {
         tg.expand();
       }
 
-      // Пробуем получить данные пользователя несколько раз (Telegram Desktop может задержать их)
-      let tgUser = null;
+      // Пробуем получить данные пользователя разными способами
+      let tgUser: any = null;
+
+      // Способ 1: initDataUnsafe (прямой объект)
       for (let i = 0; i < 5; i++) {
         tgUser = tg?.initDataUnsafe?.user;
         if (tgUser?.id) break;
         await new Promise(resolve => setTimeout(resolve, 200));
+      }
+
+      // Способ 2: парсим сырой initData вручную (работает на Telegram Desktop)
+      if (!tgUser?.id && tg?.initData) {
+        try {
+          const params = new URLSearchParams(tg.initData);
+          const userStr = params.get('user');
+          if (userStr) {
+            tgUser = JSON.parse(decodeURIComponent(userStr));
+          }
+        } catch (e) { /* ignore */ }
       }
 
       if (tgUser?.id) {
