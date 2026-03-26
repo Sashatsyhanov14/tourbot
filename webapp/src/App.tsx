@@ -184,20 +184,21 @@ const App: React.FC = () => {
   const fetchUserData = async (tgId: number, firstName?: string, username?: string) => {
     try {
       setLoading(true);
-      const { data: userData, error } = await supabase.from('users').select('*').eq('telegram_id', tgId).single();
+      const { data: userData } = await supabase.from('users').select('*').eq('telegram_id', tgId).single();
 
       let currentUser = userData;
 
-      if (!userData && error && tg?.initDataUnsafe?.user) {
+      if (!userData && tg?.initDataUnsafe?.user) {
         // Если пользователя нет, но мы в Telegram — создаем его
         const newUser = {
           telegram_id: tgId,
+          username: username || firstName || 'User',
           first_name: firstName || 'User',
-          username: username || '',
           balance: 0,
-          role: 'client'
+          role: 'user'   // ← было 'client', но в БД ожидается 'user'
         };
-        const { data: created } = await supabase.from('users').insert(newUser).select().single();
+        const { data: created, error: createErr } = await supabase.from('users').insert(newUser).select().single();
+        if (createErr) console.error('Create user error:', createErr.message);
         if (created) currentUser = created;
       }
 
