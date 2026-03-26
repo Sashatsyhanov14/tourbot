@@ -210,6 +210,17 @@ bot.on('text', async (ctx) => {
     }
 
     // --- AI ЧАТ ---
+    let { data: user } = await getUser(telegramId);
+    if (!user) {
+        const { data: newUser } = await createUser({
+            telegram_id: telegramId,
+            username: ctx.from.username || ctx.from.first_name,
+            role: 'user',
+            balance: 0
+        });
+        user = newUser;
+    }
+
     const { data: history } = await getHistory(telegramId);
     const { data: excursions } = await getExcursions();
     const { data: faqRows } = await getFaq();
