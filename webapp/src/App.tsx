@@ -311,7 +311,7 @@ const App: React.FC = () => {
   }
 
   const isOwner = user.role === 'founder' || user.role === 'manager';
-  const refLink = `https://t.me/your_bot_username?start=${user.telegram_id}`;
+  const refLink = `https://t.me/Emedeotour_bot?start=${user.telegram_id}`;
 
   const renderContent = () => {
     switch (activeTab) {
@@ -320,7 +320,7 @@ const App: React.FC = () => {
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="bg-gradient-to-br from-secondary/20 to-transparent p-6 rounded-3xl border border-white/5 text-center">
               <span className="text-xs font-bold text-secondary uppercase tracking-widest">{t.bonusBalance}</span>
-              <h2 className="text-5xl font-black mt-2 text-white">${user.balance?.toFixed(2) || '0.00'}</h2>
+              <h2 className="text-5xl font-black mt-2 text-white">{user.balance?.toLocaleString() || '0'} ₺</h2>
               <button
                 onClick={() => setIsWithdrawOpen(true)}
                 className="mt-4 px-6 py-2 bg-secondary/10 text-secondary border border-secondary/20 rounded-full text-xs font-black uppercase tracking-widest active:scale-95 transition-all"

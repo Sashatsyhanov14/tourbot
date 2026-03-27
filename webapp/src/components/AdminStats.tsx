@@ -80,7 +80,7 @@ const AdminStats: React.FC<{ t: any }> = ({ t }) => {
                 </div>
                 <div className="bg-primary/10 p-6 rounded-3xl border border-primary/20 col-span-2">
                     <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">{t.statsRevenue}</p>
-                    <p className="text-4xl font-black text-white">{stats.totalRevenue.toLocaleString()} ₽</p>
+                    <p className="text-4xl font-black text-white">{stats.totalRevenue.toLocaleString()} ₺</p>
                     <p className="text-[10px] text-primary/60 mt-2 font-bold uppercase tracking-tight">* С учётом всех активных заявок</p>
                 </div>
             </div>

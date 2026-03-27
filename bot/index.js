@@ -33,10 +33,9 @@ bot.action(/^accept_req_(.+)$/, async (ctx) => {
     try {
         await ctx.editMessageText(
             ctx.callbackQuery.message.text + `\n\n✅ ПРИНЯТО: @${ctx.from.username || managerId}`,
-            Markup.inlineKeyboard([])
+            Markup.inlineKeyboard([[Markup.button.callback('💰 Начислить бонусы', `bonus_req_${requestId}`)]])
         );
 
-        // Уведомление клиенту
         const lang = userLangCache[request.user_id] || 'ru';
         const msgRu = `✅ Ваша заявка на экскурсию «${request.excursion_title}» принята в работу! Оператор свяжется с вами в ближайшее время.`;
         const msg = await getLocalizedText(lang, msgRu);
@@ -66,6 +65,49 @@ bot.action(/^cancel_req_(.+)$/, async (ctx) => {
     } catch (e) { }
 
     await ctx.answerCbQuery('Заявка отклонена.');
+});
+
+// Начисль бонусы рефереру за заявку
+bot.action(/^bonus_req_(.+)$/, async (ctx) => {
+    const requestId = ctx.match[1];
+    const managerId = ctx.from.id;
+
+    const { data: manager } = await getUser(managerId);
+    if (!manager || (manager.role !== 'founder' && manager.role !== 'manager')) {
+        return ctx.answerCbQuery('❌ Нет прав.', { show_alert: true });
+    }
+
+    const { data: request } = await supabase.from('requests').select('*').eq('id', requestId).single();
+    if (!request) return ctx.answerCbQuery('❌ Заявка не найдена.', { show_alert: true });
+
+    try {
+        // Автоматическое начисление 10% рефереру покупателя
+        const { data: buyer } = await supabase.from('users').select('referrer_id').eq('telegram_id', request.user_id).single();
+        if (buyer?.referrer_id && request.price_rub) {
+            const reward = Math.round(request.price_try * 0.10);
+            const { data: refUser } = await supabase.from('users').select('balance').eq('telegram_id', buyer.referrer_id).single();
+            const newBalance = Math.round(((refUser?.balance || 0) + reward));
+            await supabase.from('users').update({ balance: newBalance }).eq('telegram_id', buyer.referrer_id);
+
+            try {
+                const refLang = userLangCache[buyer.referrer_id] || 'ru';
+                const refRu = `💰 Вам начислено ${reward}₽ (10% от заявки на экскурсию «${request.excursion_title}»)! Ваш баланс: ${newBalance}₽`;
+                const refMsg = await getLocalizedText(refLang, refRu);
+                await bot.telegram.sendMessage(buyer.referrer_id, refMsg);
+            } catch (e) { }
+
+            await ctx.editMessageText(
+                ctx.callbackQuery.message.text + `\n\n💰 БОНУС ${reward}₽ начислен рефереру (ID: ${buyer.referrer_id})`,
+                Markup.inlineKeyboard([])
+            );
+            await ctx.answerCbQuery(`✅ Бонус ${reward}₽ успешно начислен!`, { show_alert: true });
+        } else {
+            await ctx.answerCbQuery('⚠️ У этого клиента нет реферера или не указана стоимость экскурсии.', { show_alert: true });
+        }
+    } catch (e) {
+        console.error('Bonus action error:', e.message);
+        await ctx.answerCbQuery('❌ Ошибка при начислении.', { show_alert: true });
+    }
 });
 
 // --- CLIENT FLOW ---
@@ -202,7 +244,7 @@ bot.on('text', async (ctx) => {
             try {
                 const { data: buyer } = await supabase.from('users').select('referrer_id').eq('telegram_id', telegramId).single();
                 if (buyer?.referrer_id && selectedEx?.price_rub) {
-                    const reward = Math.round(selectedEx.price_rub * 0.10);
+                    const reward = Math.round(selectedEx.price_try * 0.10);
                     const { data: refUser } = await supabase.from('users').select('balance').eq('telegram_id', buyer.referrer_id).single();
                     const newBalance = Math.round(((refUser?.balance || 0) + reward));
                     await supabase.from('users').update({ balance: newBalance }).eq('telegram_id', buyer.referrer_id);
@@ -228,17 +270,22 @@ bot.on('text', async (ctx) => {
                                 [
                                     Markup.button.callback('✅ Принять', `accept_req_${order.id}`),
                                     Markup.button.callback('❌ Отклонить', `cancel_req_${order.id}`)
+                                ],
+                                [
+                                    Markup.button.callback('💰 Начислить бонусы', `bonus_req_${order.id}`)
                                 ]
                             ])
                         });
                     } catch (e) {
-                        // Fallback без Markdown
                         try {
                             await bot.telegram.sendMessage(m.telegram_id, aiReport.replace(/[\*_`\[\]()]/g, ''), {
                                 ...Markup.inlineKeyboard([
                                     [
                                         Markup.button.callback('✅ Принять', `accept_req_${order.id}`),
                                         Markup.button.callback('❌ Отклонить', `cancel_req_${order.id}`)
+                                    ],
+                                    [
+                                        Markup.button.callback('💰 Начислить бонусы', `bonus_req_${order.id}`)
                                     ]
                                 ])
                             });
