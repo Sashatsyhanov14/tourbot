@@ -165,7 +165,8 @@ const App: React.FC = () => {
   const [lang, setLang] = useState<'ru' | 'en' | 'tr'>('ru');
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'referral' | 'stats' | 'excursions' | 'requests' | 'faq'>('referral');
-  const [referralStats, setReferralStats] = useState({ invited: 0, requests: 0 });
+  const [referralStats, setReferralStats] = useState({ invited: 0, requests: 0, earned: 0 });
+  const [referralDetails, setReferralDetails] = useState<any[]>([]);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
@@ -205,9 +206,31 @@ const App: React.FC = () => {
         if (currentUser.role === 'founder' || currentUser.role === 'manager') {
           setActiveTab('stats');
         }
-        const { count: invitedCount } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('referrer_id', tgId);
-        const { count: reqCount } = await supabase.from('requests').select('*', { count: 'exact', head: true }).eq('user_id', tgId);
-        setReferralStats({ invited: invitedCount || 0, requests: reqCount || 0 });
+        // Fetch invited users with their request counts
+        const { data: invitedUsers } = await supabase
+          .from('users')
+          .select('telegram_id, username')
+          .eq('referrer_id', tgId);
+
+        if (invitedUsers && invitedUsers.length > 0) {
+          const details = await Promise.all(invitedUsers.map(async (u: any) => {
+            const { count: reqCount } = await supabase
+              .from('requests')
+              .select('*', { count: 'exact', head: true })
+              .eq('user_id', u.telegram_id)
+              .neq('status', 'cancelled');
+            return {
+              telegram_id: u.telegram_id,
+              username: u.username || `user_${u.telegram_id}`,
+              requests: reqCount || 0
+            };
+          }));
+          setReferralDetails(details);
+          const totalReqs = details.reduce((sum: number, d: any) => sum + d.requests, 0);
+          setReferralStats({ invited: invitedUsers.length, requests: totalReqs, earned: currentUser.balance || 0 });
+        } else {
+          setReferralStats({ invited: 0, requests: 0, earned: currentUser.balance || 0 });
+        }
       }
     } catch (err: any) {
       setErrorMsg(`System Error: ${err.message}`);
@@ -262,13 +285,7 @@ const App: React.FC = () => {
 
   const t = translations[lang] || translations.en;
 
-  const handleSendQr = async () => {
-    if (!user) return;
-    tg?.showAlert("QR-код отправлен в чат!");
-    tg?.close();
-  };
-
-  if (loading) return (
+if (loading) return (
     <div className="min-h-screen bg-[#0f0f11] flex flex-col items-center justify-center space-y-4">
       <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
       <p className="text-slate-400 font-medium animate-pulse">{t.loading}</p>
@@ -317,39 +334,106 @@ const App: React.FC = () => {
     switch (activeTab) {
       case 'referral':
         return (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="bg-gradient-to-br from-secondary/20 to-transparent p-6 rounded-3xl border border-white/5 text-center">
-              <span className="text-xs font-bold text-secondary uppercase tracking-widest">{t.bonusBalance}</span>
-              <h2 className="text-5xl font-black mt-2 text-white">{user.balance?.toLocaleString() || '0'} ₺</h2>
+          <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* Balance card */}
+            <div className="bg-gradient-to-br from-[#1a1a2e] to-[#16213e] p-6 rounded-3xl border border-primary/20 text-center relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-[60px] -z-10" />
+              <p className="text-[11px] font-black text-primary uppercase tracking-[0.2em] mb-2">{t.bonusBalance}</p>
+              <h2 className="text-5xl font-black text-white mb-1">{user.balance?.toLocaleString() || '0'} <span className="text-primary">₺</span></h2>
+              <p className="text-[10px] text-slate-500 mb-4">10% от каждой экскурсии вашего реферала</p>
               <button
                 onClick={() => setIsWithdrawOpen(true)}
-                className="mt-4 px-6 py-2 bg-secondary/10 text-secondary border border-secondary/20 rounded-full text-xs font-black uppercase tracking-widest active:scale-95 transition-all"
+                className="px-8 py-2.5 bg-primary/20 text-primary border border-primary/30 rounded-full text-xs font-black uppercase tracking-widest active:scale-95 transition-all hover:bg-primary/30"
               >
                 {t.withdrawBtn}
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-[#1a1a1d] p-5 rounded-3xl border border-white/5 text-center">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t.invitedCount}</p>
-                <p className="text-3xl font-bold text-slate-100">{referralStats.invited}</p>
-              </div>
-              <div className="bg-[#1a1a1d] p-5 rounded-3xl border border-white/5 text-center">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t.requestsCount}</p>
-                <p className="text-3xl font-bold text-slate-100">{referralStats.requests}</p>
-              </div>
+            {/* Stats grid */}
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: t.invitedCount, value: referralStats.invited, icon: 'group_add', color: 'text-blue-400' },
+                { label: t.requestsCount, value: referralStats.requests, icon: 'luggage', color: 'text-green-400' },
+                { label: lang === 'ru' ? 'Конверсия' : lang === 'tr' ? 'Dönüşüm' : 'Conversion', value: referralStats.invited > 0 ? Math.round((referralStats.requests / referralStats.invited) * 100) + '%' : '0%', icon: 'trending_up', color: 'text-primary' },
+              ].map((s) => (
+                <div key={s.label} className="bg-[#1a1a1d] p-4 rounded-2xl border border-white/5 text-center">
+                  <span className={`material-symbols-outlined ${s.color} text-[20px]`}>{s.icon}</span>
+                  <p className="text-2xl font-black text-white mt-1">{s.value}</p>
+                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-0.5 leading-tight">{s.label}</p>
+                </div>
+              ))}
             </div>
 
-            <div className="bg-[#1a1a1d] p-6 rounded-3xl border border-primary/20 space-y-4">
-              <h3 className="font-bold text-slate-200">{t.inviteTitle}</h3>
-              <div className="flex gap-2 bg-black/30 p-2 rounded-2xl border border-white/5">
-                <input readOnly value={refLink} className="flex-1 bg-transparent px-3 text-sm font-mono text-primary outline-none min-w-0" />
-                <button onClick={() => { navigator.clipboard.writeText(refLink); tg?.showAlert(t.linkCopied); }} className="px-4 py-2 bg-primary/20 text-primary rounded-xl text-xs font-bold whitespace-nowrap">{t.copyBtn}</button>
+            {/* Per-referral detail list */}
+            {referralDetails.length > 0 && (
+              <div className="bg-[#1a1a1d] rounded-3xl border border-white/5 overflow-hidden">
+                <div className="px-5 py-4 border-b border-white/5 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary text-[18px]">group</span>
+                  <h3 className="text-sm font-bold text-slate-200">
+                    {lang === 'ru' ? 'Мои рефералы' : lang === 'tr' ? 'Referanslarım' : 'My Referrals'}
+                  </h3>
+                </div>
+                <div className="divide-y divide-white/5">
+                  {referralDetails.map((ref, idx) => {
+                    const conv = ref.requests > 0 ? 100 : 0;
+                    return (
+                      <div key={ref.telegram_id} className="flex items-center gap-3 px-5 py-3.5">
+                        <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-[11px] font-black text-primary">#{idx + 1}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-slate-200 truncate">@{ref.username}</p>
+                          <p className="text-[10px] text-slate-500 font-mono">{ref.telegram_id}</p>
+                        </div>
+                        <div className="flex items-center gap-3 text-right">
+                          <div>
+                            <p className="text-[10px] font-bold text-green-400">{ref.requests}</p>
+                            <p className="text-[8px] text-slate-600 uppercase">{lang === 'ru' ? 'заявок' : lang === 'tr' ? 'sipariş' : 'orders'}</p>
+                          </div>
+                          <div className={`px-2 py-0.5 rounded-full text-[9px] font-black ${conv > 0 ? 'bg-green-500/20 text-green-400' : 'bg-white/5 text-slate-500'}`}>
+                            {conv > 0 ? '✓ Купил' : 'Ожидание'}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="bg-white p-4 rounded-2xl w-fit mx-auto shadow-xl">
-                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(refLink)}`} alt="QR" className="block" />
+            )}
+
+            {/* Referral link block */}
+            <div className="bg-[#1a1a1d] p-5 rounded-3xl border border-primary/20 space-y-4 relative overflow-hidden">
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-primary/5 rounded-full blur-[40px] -z-10" />
+              <h3 className="font-bold text-slate-200 flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary text-[18px]">share</span>
+                {t.inviteTitle}
+              </h3>
+              <div className="flex gap-2 bg-black/30 p-1.5 rounded-2xl border border-white/5">
+                <input readOnly value={refLink} className="flex-1 bg-transparent px-3 text-xs font-mono text-primary outline-none min-w-0" />
+                <button
+                  onClick={() => { navigator.clipboard.writeText(refLink); tg?.showAlert(t.linkCopied); }}
+                  className="px-4 py-2 bg-primary/20 text-primary rounded-xl text-[11px] font-bold whitespace-nowrap active:scale-95 transition-all hover:bg-primary/30"
+                >
+                  {t.copyBtn}
+                </button>
               </div>
-              <button onClick={handleSendQr} className="w-full py-4 bg-primary/10 text-primary border border-primary/20 rounded-2xl font-bold text-sm active:scale-95 transition-all">{t.getQrBtn}</button>
+              {/* Promo code */}
+              <div className="flex items-center gap-2 bg-black/20 p-3 rounded-2xl border border-white/5">
+                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{t.promoLabel}:</span>
+                <span className="font-black text-primary font-mono flex-1">{user.telegram_id}</span>
+                <button
+                  onClick={() => { navigator.clipboard.writeText(String(user.telegram_id)); tg?.showAlert(t.linkCopied); }}
+                  className="text-[10px] px-3 py-1.5 bg-primary/10 text-primary rounded-lg font-bold active:scale-95 transition-all"
+                >
+                  {t.copyBtn}
+                </button>
+              </div>
+              {/* QR */}
+              <div className="flex flex-col items-center gap-3 pt-2">
+                <div className="bg-white p-3 rounded-2xl w-fit shadow-xl">
+                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(refLink)}&margin=8`} alt="QR" className="block rounded-lg" />
+                </div>
+              </div>
             </div>
           </div>
         );
@@ -363,38 +447,85 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#0f0f11] text-slate-100 font-sans pb-32">
-      <header className="px-6 pt-12 pb-6 flex justify-between items-center">
+      {/* Header */}
+      <header className="px-6 pt-10 pb-5 flex justify-between items-center">
         <div>
-          <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-1">{activeTab === 'referral' ? t.tabReferral : t.adminSubtitle}</p>
-          <h1 className="text-2xl font-bold">{activeTab === 'referral' ? t.adminTitle.replace('Управления', 'Профиля') : t.adminTitle}</h1>
+          <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-1">
+            {activeTab === 'referral' ? (lang === 'ru' ? 'Профиль' : lang === 'tr' ? 'Profil' : 'Profile') : t.adminSubtitle}
+          </p>
+          <h1 className="text-2xl font-black text-white">
+            {activeTab === 'referral' ? `@${user.username || 'User'}` : t.adminTitle}
+          </h1>
         </div>
-        <div className="flex gap-2 bg-[#1a1a1d] p-1 rounded-full border border-white/5">
-          {['ru', 'en', 'tr'].map(l => (
-            <button key={l} onClick={() => setLang(l as any)} className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase transition-all ${lang === l ? 'bg-primary text-black' : 'text-slate-500'}`}>{l}</button>
-          ))}
+        <div className="flex items-center gap-2">
+          <span className={`text-[9px] font-black px-2 py-1 rounded-full uppercase ${
+            user.role === 'founder' ? 'bg-yellow-500/20 text-yellow-400' :
+            user.role === 'manager' ? 'bg-primary/20 text-primary' :
+            'bg-white/5 text-slate-500'
+          }`}>
+            {user.role === 'founder' ? (t.ownerBadge || 'Owner') : user.role === 'manager' ? t.roleManager : t.roleUser}
+          </span>
+          <div className="flex gap-1 bg-[#1a1a1d] p-1 rounded-full border border-white/5">
+            {(['ru', 'en', 'tr'] as const).map(l => (
+              <button key={l} onClick={() => setLang(l)} className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase transition-all ${
+                lang === l ? 'bg-primary text-black' : 'text-slate-500 hover:text-slate-300'
+              }`}>{l}</button>
+            ))}
+          </div>
         </div>
       </header>
 
-      <main className="px-6 max-w-4xl mx-auto">{renderContent()}</main>
+      <main className="px-4 max-w-2xl mx-auto">{renderContent()}</main>
 
-      <nav className="fixed bottom-6 left-6 right-6 z-50 flex justify-around items-center p-2 bg-[#1a1a1d]/80 backdrop-blur-3xl rounded-[2.5rem] border border-white/10 shadow-2xl">
-        <button onClick={() => setActiveTab('referral')} className={`flex flex-col items-center p-4 rounded-3xl transition-all ${activeTab === 'referral' ? 'text-primary' : 'text-slate-500'}`}>
-          <span className="material-symbols-outlined mb-1">group</span>
-          <span className="text-[9px] font-bold uppercase tracking-wider">{t.tabReferral.split(' ')[1] || t.tabReferral}</span>
+      {/* Nav */}
+      <nav className="fixed bottom-4 left-4 right-4 z-50 flex justify-around items-center px-2 py-2 bg-[#1a1a1d]/90 backdrop-blur-3xl rounded-[2rem] border border-white/10 shadow-2xl">
+        <button
+          onClick={() => setActiveTab('referral')}
+          className={`flex flex-col items-center px-3 py-2 rounded-2xl transition-all ${
+            activeTab === 'referral' ? 'text-primary bg-primary/10' : 'text-slate-500 hover:text-slate-300'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: activeTab === 'referral' ? "'FILL' 1" : "'FILL' 0" }}>group</span>
+          <span className="text-[8px] font-black uppercase tracking-wider mt-0.5">{lang === 'ru' ? 'Бонусы' : lang === 'tr' ? 'Bonus' : 'Bonus'}</span>
         </button>
+
         {isOwner && (
           <>
-            <button onClick={() => setActiveTab('stats')} className={`flex flex-col items-center p-4 rounded-3xl transition-all ${activeTab === 'stats' ? 'text-primary' : 'text-slate-500'}`}>
-              <span className="material-symbols-outlined mb-1">dashboard</span>
-              <span className="text-[9px] font-bold uppercase tracking-wider">{t.tabStats}</span>
+            <button
+              onClick={() => setActiveTab('stats')}
+              className={`flex flex-col items-center px-3 py-2 rounded-2xl transition-all ${
+                activeTab === 'stats' ? 'text-primary bg-primary/10' : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: activeTab === 'stats' ? "'FILL' 1" : "'FILL' 0" }}>dashboard</span>
+              <span className="text-[8px] font-black uppercase tracking-wider mt-0.5">{t.tabStats}</span>
             </button>
-            <button onClick={() => setActiveTab('excursions')} className={`flex flex-col items-center p-4 rounded-3xl transition-all ${activeTab === 'excursions' ? 'text-primary' : 'text-slate-500'}`}>
-              <span className="material-symbols-outlined mb-1">map</span>
-              <span className="text-[9px] font-bold uppercase tracking-wider">{t.tabExcursions}</span>
+            <button
+              onClick={() => setActiveTab('excursions')}
+              className={`flex flex-col items-center px-3 py-2 rounded-2xl transition-all ${
+                activeTab === 'excursions' ? 'text-primary bg-primary/10' : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: activeTab === 'excursions' ? "'FILL' 1" : "'FILL' 0" }}>map</span>
+              <span className="text-[8px] font-black uppercase tracking-wider mt-0.5">{t.tabExcursions}</span>
             </button>
-            <button onClick={() => setActiveTab('requests')} className={`flex flex-col items-center p-4 rounded-3xl transition-all ${activeTab === 'requests' ? 'text-primary' : 'text-slate-500'}`}>
-              <span className="material-symbols-outlined mb-1">list_alt</span>
-              <span className="text-[9px] font-bold uppercase tracking-wider">{t.tabRequests}</span>
+            <button
+              onClick={() => setActiveTab('requests')}
+              className={`flex flex-col items-center px-3 py-2 rounded-2xl transition-all ${
+                activeTab === 'requests' ? 'text-primary bg-primary/10' : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: activeTab === 'requests' ? "'FILL' 1" : "'FILL' 0" }}>list_alt</span>
+              <span className="text-[8px] font-black uppercase tracking-wider mt-0.5">{t.tabRequests}</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('faq')}
+              className={`flex flex-col items-center px-3 py-2 rounded-2xl transition-all ${
+                activeTab === 'faq' ? 'text-primary bg-primary/10' : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: activeTab === 'faq' ? "'FILL' 1" : "'FILL' 0" }}>help</span>
+              <span className="text-[8px] font-black uppercase tracking-wider mt-0.5">{t.tabFaq}</span>
             </button>
           </>
         )}
