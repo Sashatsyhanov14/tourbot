@@ -234,7 +234,8 @@ bot.on('text', async (ctx) => {
                 state.data.fullName,
                 state.data.tourDate,
                 state.data.hotelName,
-                selectedEx ? selectedEx.price_rub : 0
+                selectedEx ? selectedEx.price_rub : 0,
+                state.data.phone
             );
 
             const { data: user } = await getUser(telegramId);

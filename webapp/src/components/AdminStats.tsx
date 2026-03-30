@@ -31,51 +31,50 @@ const AdminStats: React.FC<{ t: any }> = ({ t }) => {
     };
 
     const fetchReferralRows = async () => {
-        // Get all referrers (users with at least one referral)
+        // 1. Get all users who have been referred (have referrer_id set)
+        const { data: invitedUsers } = await supabase
+            .from('users')
+            .select('telegram_id, username, referrer_id')
+            .not('referrer_id', 'is', null);
+
+        if (!invitedUsers || invitedUsers.length === 0) return;
+
+        // 2. Get unique referrer IDs
+        const referrerIds = [...new Set(invitedUsers.map((u: any) => u.referrer_id))];
+
+        // 3. Fetch referrer profiles
         const { data: referrers } = await supabase
             .from('users')
             .select('telegram_id, username, balance')
-            .not('telegram_id', 'is', null);
+            .in('telegram_id', referrerIds);
 
         if (!referrers) return;
 
-        const rows = await Promise.all(referrers.map(async (ref: any) => {
-            // Count users they invited
-            const { count: invitedCount } = await supabase
-                .from('users')
-                .select('*', { count: 'exact', head: true })
-                .eq('referrer_id', ref.telegram_id);
+        // 4. Fetch all payout history for these referrers in one query
+        const { data: allPayouts } = await supabase
+            .from('chat_history')
+            .select('user_id, content, created_at')
+            .in('user_id', referrerIds)
+            .like('content', `${PAYOUT_PREFIX}%`)
+            .order('created_at', { ascending: false });
 
-            if (!invitedCount) return null; // Skip if no referrals
+        // 5. Fetch all requests from invitees in one query (with full details)
+        const inviteeIds = invitedUsers.map((u: any) => u.telegram_id);
+        const { data: allReqs } = await supabase
+            .from('requests')
+            .select('user_id, price_rub, status, excursion_title, tour_date, full_name, created_at')
+            .in('user_id', inviteeIds)
+            .neq('status', 'cancelled')
+            .order('created_at', { ascending: false });
 
-            // Count active requests from their invitees
-            const { data: invitees } = await supabase
-                .from('users')
-                .select('telegram_id')
-                .eq('referrer_id', ref.telegram_id);
-
-            const inviteeIds = (invitees || []).map((u: any) => u.telegram_id);
-            let requestCount = 0;
-            let revenue = 0;
-            if (inviteeIds.length > 0) {
-                const { data: reqs } = await supabase
-                    .from('requests')
-                    .select('price_rub, status')
-                    .in('user_id', inviteeIds)
-                    .neq('status', 'cancelled');
-                requestCount = reqs?.length || 0;
-                revenue = (reqs || []).reduce((sum: number, r: any) => sum + (Number(r.price_rub) || 0), 0);
-            }
-
-            // Payout history from chat_history
-            const { data: payouts } = await supabase
-                .from('chat_history')
-                .select('content, created_at')
-                .eq('user_id', ref.telegram_id)
-                .like('content', `${PAYOUT_PREFIX}%`)
-                .order('created_at', { ascending: false });
-
-            const totalPaid = (payouts || []).reduce((sum: number, p: any) => {
+        // 6. Build rows
+        const rows = referrers.map((ref: any) => {
+            const myInvitees = invitedUsers.filter((u: any) => u.referrer_id === ref.telegram_id);
+            const myInviteeIds = myInvitees.map((u: any) => u.telegram_id);
+            const myReqs = (allReqs || []).filter((r: any) => myInviteeIds.includes(r.user_id));
+            const revenue = myReqs.reduce((sum: number, r: any) => sum + (Number(r.price_rub) || 0), 0);
+            const myPayouts = (allPayouts || []).filter((p: any) => p.user_id === ref.telegram_id);
+            const totalPaid = myPayouts.reduce((sum: number, p: any) => {
                 const match = p.content.match(/\$?([\d.]+)/);
                 return sum + (match ? parseFloat(match[1]) : 0);
             }, 0);
@@ -84,15 +83,16 @@ const AdminStats: React.FC<{ t: any }> = ({ t }) => {
                 telegram_id: ref.telegram_id,
                 username: ref.username,
                 balance: ref.balance || 0,
-                invitedCount,
-                requestCount,
+                invitedCount: myInvitees.length,
+                requestCount: myReqs.length,
                 revenue,
                 totalPaid,
-                payouts: payouts || []
+                payouts: myPayouts,
+                requests: myReqs  // full request objects
             };
-        }));
+        });
 
-        setReferralRows(rows.filter(Boolean));
+        setReferralRows(rows);
     };
 
     const fetchManagers = async () => {
@@ -227,10 +227,36 @@ const AdminStats: React.FC<{ t: any }> = ({ t }) => {
                                     <p className="text-xs text-green-400 bg-green-500/10 border border-green-500/20 p-2 rounded-xl">{payoutMsg[ref.telegram_id]}</p>
                                 )}
 
+                                {/* Bookings from this referral's invitees */}
+                                {ref.requests && ref.requests.length > 0 && (
+                                    <details className="text-[10px]">
+                                        <summary className="text-slate-400 cursor-pointer hover:text-slate-200 font-bold uppercase tracking-wider flex items-center gap-1">
+                                            <span className="material-symbols-outlined text-[14px]">receipt_long</span>
+                                            Заявки ({ref.requests.length})
+                                        </summary>
+                                        <div className="mt-2 space-y-1.5 pl-2">
+                                            {ref.requests.map((r: any, i: number) => (
+                                                <div key={i} className="bg-black/30 p-2 rounded-xl flex items-center gap-2">
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-slate-200 font-bold truncate">{r.excursion_title || '—'}</p>
+                                                        <p className="text-slate-500">{r.full_name || '—'} · {r.tour_date || '—'}</p>
+                                                    </div>
+                                                    <div className="text-right flex-shrink-0">
+                                                        <p className="text-primary font-black">${r.price_rub || 0}</p>
+                                                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${r.status === 'accepted' ? 'bg-green-500/20 text-green-400' : r.status === 'new' ? 'bg-blue-500/20 text-blue-400' : 'bg-white/5 text-slate-500'}`}>
+                                                            {r.status === 'accepted' ? '✓' : r.status === 'new' ? 'новая' : r.status}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </details>
+                                )}
+
                                 {/* Payout history */}
                                 {ref.payouts.length > 0 && (
                                     <details className="text-[10px]">
-                                        <summary className="text-slate-500 cursor-pointer hover:text-slate-300 font-bold uppercase tracking-wider">История ({ref.payouts.length})</summary>
+                                        <summary className="text-slate-500 cursor-pointer hover:text-slate-300 font-bold uppercase tracking-wider">История выплат ({ref.payouts.length})</summary>
                                         <div className="mt-2 space-y-1 pl-2">
                                             {ref.payouts.map((p: any, i: number) => (
                                                 <p key={i} className="text-slate-400 font-mono">{p.content.replace(PAYOUT_PREFIX, '').trim()}</p>

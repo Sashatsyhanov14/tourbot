@@ -97,6 +97,7 @@ ${history.slice(-5).map(h => `${h.role === 'user' ? 'Клиент' : 'Бот'}: 
 - ФИО: ${bookingDetails.fullName || '—'}
 - Дата: ${bookingDetails.tourDate || '—'}
 - Отель/Адрес: ${bookingDetails.hotelName || '—'}
+- Телефон (WhatsApp): ${bookingDetails.phone || '—'}
 `;
 
             const response = await openai.chat.completions.create({
@@ -112,7 +113,7 @@ ${history.slice(-5).map(h => `${h.role === 'user' ? 'Клиент' : 'Бот'}: 
         } catch (e) {
             console.error('[Manager Alerter Error]:', e.message);
             // Фолбэк на стандартное сообщение, если AI упал
-            return `🚀 **НОВАЯ ЗАЯВКА!**\n\n📌 ${excursion?.title}\n👤 Клиент: @${userData.username}\n📝 ФИО: ${bookingDetails.fullName}\n📅 Дата: ${bookingDetails.tourDate}\n🏨 Отель: ${bookingDetails.hotelName}`;
+            return `🚀 **НОВАЯ ЗАЯВКА!**\n\n📈 ${excursion?.title}\n👤 Клиент: @${userData.username}\n📝 ФИО: ${bookingDetails.fullName}\n📅 Дата: ${bookingDetails.tourDate}\n🏨 Отель: ${bookingDetails.hotelName}\n📞 WhatsApp: ${bookingDetails.phone || 'не указан'}`;
         }
     },
 
