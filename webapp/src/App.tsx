@@ -339,8 +339,8 @@ if (loading) return (
             <div className="bg-gradient-to-br from-[#1a1a2e] to-[#16213e] p-6 rounded-3xl border border-primary/20 text-center relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-[60px] -z-10" />
               <p className="text-[11px] font-black text-primary uppercase tracking-[0.2em] mb-2">{t.bonusBalance}</p>
-              <h2 className="text-5xl font-black text-white mb-1">{user.balance?.toLocaleString() || '0'} <span className="text-primary">₺</span></h2>
-              <p className="text-[10px] text-slate-500 mb-4">10% от каждой экскурсии вашего реферала</p>
+              <h2 className="text-5xl font-black text-white mb-1">{user.balance?.toLocaleString() || '0'} <span className="text-primary">$</span></h2>
+              <p className="text-[10px] text-slate-500 mb-4">1% от каждой экскурсии вашего реферала</p>
               <button
                 onClick={() => setIsWithdrawOpen(true)}
                 className="px-8 py-2.5 bg-primary/20 text-primary border border-primary/30 rounded-full text-xs font-black uppercase tracking-widest active:scale-95 transition-all hover:bg-primary/30"

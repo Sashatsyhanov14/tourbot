@@ -81,26 +81,26 @@ bot.action(/^bonus_req_(.+)$/, async (ctx) => {
     if (!request) return ctx.answerCbQuery('❌ Заявка не найдена.', { show_alert: true });
 
     try {
-        // Автоматическое начисление 10% рефереру покупателя
+        // Начисление 1% рефереру покупателя
         const { data: buyer } = await supabase.from('users').select('referrer_id').eq('telegram_id', request.user_id).single();
         if (buyer?.referrer_id && request.price_rub) {
-            const reward = Math.round(request.price_try * 0.10);
+            const reward = Math.round(request.price_rub * 0.01);
             const { data: refUser } = await supabase.from('users').select('balance').eq('telegram_id', buyer.referrer_id).single();
             const newBalance = Math.round(((refUser?.balance || 0) + reward));
             await supabase.from('users').update({ balance: newBalance }).eq('telegram_id', buyer.referrer_id);
 
             try {
                 const refLang = userLangCache[buyer.referrer_id] || 'ru';
-                const refRu = `💰 Вам начислено ${reward}₽ (10% от заявки на экскурсию «${request.excursion_title}»)! Ваш баланс: ${newBalance}₽`;
+                const refRu = `💰 Вам начислено $${reward} (1% от заявки на экскурсию «${request.excursion_title}»)! Ваш баланс: $${newBalance}`;
                 const refMsg = await getLocalizedText(refLang, refRu);
                 await bot.telegram.sendMessage(buyer.referrer_id, refMsg);
             } catch (e) { }
 
             await ctx.editMessageText(
-                ctx.callbackQuery.message.text + `\n\n💰 БОНУС ${reward}₽ начислен рефереру (ID: ${buyer.referrer_id})`,
+                ctx.callbackQuery.message.text + `\n\n💰 БОНУС $${reward} начислен рефереру (ID: ${buyer.referrer_id})`,
                 Markup.inlineKeyboard([])
             );
-            await ctx.answerCbQuery(`✅ Бонус ${reward}₽ успешно начислен!`, { show_alert: true });
+            await ctx.answerCbQuery(`✅ Бонус $${reward} успешно начислен!`, { show_alert: true });
         } else {
             await ctx.answerCbQuery('⚠️ У этого клиента нет реферера или не указана стоимость экскурсии.', { show_alert: true });
         }
@@ -209,12 +209,19 @@ bot.on('text', async (ctx) => {
         if (state.step === 'date') {
             state.data.tourDate = userText;
             state.step = 'hotel';
-            const msg = await getLocalizedText(lang, '🏨 Понял. Последний шаг: напишите ваш город и название отеля (или адрес, откуда вас забрать):');
+            const msg = await getLocalizedText(lang, '🏨 Понял. Напишите ваш город и название отеля (или адрес, откуда вас забрать):');
             return ctx.reply(msg);
         }
 
         if (state.step === 'hotel') {
             state.data.hotelName = userText;
+            state.step = 'phone';
+            const msg = await getLocalizedText(lang, '📞 Почти готово! Укажите номер WhatsApp для связи с оператором:');
+            return ctx.reply(msg);
+        }
+
+        if (state.step === 'phone') {
+            state.data.phone = userText;
             const excursionId = state.excursionId;
 
             const { data: excursions } = await getExcursions();
@@ -236,21 +243,21 @@ bot.on('text', async (ctx) => {
 
             userStates.delete(telegramId);
 
-            const thanksRu = `✅ Спасибо! Ваша заявка отправлена оператору. Скоро мы свяжемся с вами для подтверждения деталей. 🙌`;
+            const thanksRu = `✅ Спасибо! Заявка отправлена. Наш оператор свяжется с вами по номеру ${userText} в ближайшее время. 🙌`;
             const thanksMsg = await getLocalizedText(lang, thanksRu);
             await ctx.reply(thanksMsg);
 
-            // --- РЕФЕРАЛЬНОЕ НАЧИСЛЕНИЕ: 10% от стоимости ---
+            // --- РЕФЕРАЛЬНОЕ НАЧИСЛЕНИЕ: 1% от стоимости ---
             try {
                 const { data: buyer } = await supabase.from('users').select('referrer_id').eq('telegram_id', telegramId).single();
                 if (buyer?.referrer_id && selectedEx?.price_rub) {
-                    const reward = Math.round(selectedEx.price_try * 0.10);
+                    const reward = Math.round(selectedEx.price_rub * 0.01);
                     const { data: refUser } = await supabase.from('users').select('balance').eq('telegram_id', buyer.referrer_id).single();
                     const newBalance = Math.round(((refUser?.balance || 0) + reward));
                     await supabase.from('users').update({ balance: newBalance }).eq('telegram_id', buyer.referrer_id);
                     try {
                         const refLang = userLangCache[buyer.referrer_id] || 'ru';
-                        const refRu = `💰 Вам начислено ${reward}₽ (10% от заявки на экскурсию)! Ваш новый баланс: ${newBalance}₽`;
+                        const refRu = `💰 Вам начислено $${reward} (1% от заявки на экскурсию «${selectedEx.title}»)! Ваш баланс: $${newBalance}`;
                         const refMsg = await getLocalizedText(refLang, refRu);
                         await bot.telegram.sendMessage(buyer.referrer_id, refMsg);
                     } catch (e) { }
