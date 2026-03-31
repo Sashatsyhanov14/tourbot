@@ -15,7 +15,7 @@ const ConfirmDialog: React.FC<{
     onConfirm: () => void;
     onCancel: () => void;
 }> = ({ message, confirmLabel = 'Удалить', onConfirm, onCancel }) => (
-    <div className="fixed inset-0 z-50 flex items-end justify-center pb-6 px-4 bg-black/60 backdrop-blur-sm" onClick={onCancel}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center pb-28 px-4 bg-black/60 backdrop-blur-sm" onClick={onCancel}>
         <div
             className="w-full max-w-sm bg-[#1a1a1d] rounded-3xl border border-white/10 p-6 space-y-4 shadow-2xl animate-in slide-in-from-bottom-4 duration-200"
             onClick={e => e.stopPropagation()}
