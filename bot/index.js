@@ -363,7 +363,32 @@ bot.on('text', async (ctx) => {
         const bookMatch = aiResponse.match(/\[BOOK_REQUEST:\s*([a-zA-Z0-9_-]+)\]/i);
         let finalResponse = aiResponse.replace(/\[BOOK_REQUEST:.*?\]/gi, '').replace(/\[LANG:.*?\]/gi, '').trim();
 
-        if (bookMatch) {
+
+    // Helper: send all photos of an excursion as album
+    const sendExcursionPhotos = async (ex) => {
+        const photos = (ex.image_urls && ex.image_urls.length > 0)
+            ? ex.image_urls
+            : (ex.image_url ? [ex.image_url] : []);
+
+        if (photos.length === 0) return;
+
+        try {
+            if (photos.length === 1) {
+                await ctx.replyWithPhoto(photos[0]);
+            } else {
+                // Telegram allows max 10 in a MediaGroup
+                const media = photos.slice(0, 10).map((url, i) => ({
+                    type: 'photo',
+                    media: url
+                }));
+                await ctx.replyWithMediaGroup(media);
+            }
+        } catch (e) {
+            console.warn('[MediaGroup] Error:', e.message);
+        }
+    };
+
+    if (bookMatch) {
             const excursionId = bookMatch[1];
             const selectedEx = excursions ? excursions.find(e => e.id === excursionId) : null;
 
@@ -375,6 +400,10 @@ bot.on('text', async (ctx) => {
                 const namePrompt = await getLocalizedText(currentLang, namePromptRu);
 
                 await saveMessage(telegramId, 'assistant', finalResponse);
+
+                // Send photos album first
+                await sendExcursionPhotos(selectedEx);
+
                 try {
                     await ctx.reply(finalResponse, { parse_mode: 'Markdown' });
                 } catch (e) {
@@ -386,6 +415,16 @@ bot.on('text', async (ctx) => {
 
         if (!finalResponse || finalResponse.trim() === '') {
             finalResponse = 'Пожалуйста, подожди минуту или напиши по-другому.';
+        }
+
+        // Check if AI response describes exactly one excursion → send its photos
+        if (excursions) {
+            const mentionedEx = excursions.find(e =>
+                finalResponse.toLowerCase().includes(e.title.toLowerCase())
+            );
+            if (mentionedEx) {
+                await sendExcursionPhotos(mentionedEx);
+            }
         }
 
         await saveMessage(telegramId, 'assistant', finalResponse);

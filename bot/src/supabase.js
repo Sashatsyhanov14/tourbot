@@ -42,7 +42,7 @@ module.exports = {
   async getExcursions() {
     const { data, error } = await supabase
       .from('excursions')
-      .select('id, sort_number, city, title, description, price_rub, duration, included, meeting_point, image_url')
+      .select('id, sort_number, city, title, description, price_rub, duration, included, meeting_point, image_url, image_urls')
       .eq('is_active', true)
       .order('sort_number', { ascending: true });
     return { data, error };
