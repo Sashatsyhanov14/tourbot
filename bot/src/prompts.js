@@ -58,7 +58,7 @@ ${excursions.map(e => `- [${e.city}] ${e.title} | ${e.duration} | $${e.price_rub
 
 6. SALE: If intent is "sale" - write a short friendly confirmation ("Great, booking it! 🎉"). Nothing extra.
 
-${faqText ? `7. For FAQ answers use our knowledge base:\n${faqText}` : ''}
+${faqText ? `7. For FAQ questions (intent = faq) you MUST answer STRICTLY from this knowledge base — do NOT improvise:\n${faqText}` : '7. No FAQ data loaded — if asked a general question, say you will check and respond shortly.'}
 `;
 
 const MANAGER_ALERTER_PROMPT = `

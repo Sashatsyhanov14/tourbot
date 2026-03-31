@@ -10,7 +10,11 @@ const MANAGER_ID = parseInt(process.env.MANAGER_ID);
 
 // Кеш языков и состояний пользователей
 const userLangCache = {};
+const userQrBtnCache = {}; // cached translated QR button text per user
 const userStates = new Map(); // { telegramId: { step: 'name'|'date'|'hotel', excursionId, data: {} } }
+
+// QR button keywords for detection in any language
+const QR_KEYWORDS = ['qr', 'промокод', 'promo', 'refer', 'реферал', 'benim qr', 'qrcode'];
 
 bot.use(session());
 
@@ -141,7 +145,11 @@ bot.start(async (ctx) => {
 
         const welcomeText1 = await getLocalizedText(lang, welcomeRuPart1);
         const webappBtnRu = '🎒 Открыть Каталог';
+        const qrBtnRu = '📲 Мой QR / Промокод';
         const webappBtn = await getLocalizedText(lang, webappBtnRu);
+        const qrBtn = await getLocalizedText(lang, qrBtnRu);
+        // Cache translated QR button text for detection later
+        userQrBtnCache[telegramId] = qrBtn;
 
         // Очистка старой клавиатуры
         try {
@@ -151,7 +159,8 @@ bot.start(async (ctx) => {
 
         await ctx.reply(welcomeText1,
             Markup.keyboard([
-                [Markup.button.webApp(webappBtn, `${process.env.WEBAPP_URL || ''}?uid=${telegramId}`)]
+                [Markup.button.webApp(webappBtn, `${process.env.WEBAPP_URL || ''}?uid=${telegramId}`)],
+                [qrBtn]
             ]).resize()
         );
         console.log(`[START] Welcome Part 1 sent to ${username}`);
@@ -190,10 +199,54 @@ bot.command('ref', async (ctx) => {
     }
 });
 
+// --- WEB APP DATA (sendData from mini-app buttons) ---
+bot.on('message', async (ctx, next) => {
+    const data = ctx.message?.web_app_data?.data;
+    if (!data) return next();
+
+    const telegramId = ctx.from.id;
+    const lang = userLangCache[telegramId] || 'ru';
+
+    if (QR_KEYWORDS.some(kw => data.toLowerCase().includes(kw)) || data.includes('QR')) {
+        const botUsername = ctx.botInfo?.username || '';
+        const refLink = `https://t.me/${botUsername}?start=${telegramId}`;
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(refLink)}&margin=15&bgcolor=ffffff`;
+        const captionRu = `🔗 *Link:* \`${refLink}\`\n🎫 *Promo:* \`${telegramId}\`\n\n✨ Поделитесь этим QR — получайте 1$ бонус за каждого друга!`;
+        const caption = await getLocalizedText(lang, captionRu);
+        try {
+            await ctx.replyWithPhoto(qrUrl, { caption, parse_mode: 'Markdown' });
+        } catch {
+            await ctx.reply(caption, { parse_mode: 'Markdown' });
+        }
+    }
+});
+
 bot.on('text', async (ctx) => {
     const telegramId = ctx.from.id;
     const userText = ctx.message.text.trim();
     const state = userStates.get(telegramId);
+
+    // --- QR BUTTON HANDLER ---
+    const isQrRequest =
+        (userQrBtnCache[telegramId] && userText === userQrBtnCache[telegramId]) ||
+        QR_KEYWORDS.some(kw => userText.toLowerCase().includes(kw));
+
+    if (isQrRequest) {
+        const lang = userLangCache[telegramId] || 'ru';
+        const botUsername = ctx.botInfo?.username || '';
+        const refLink = `https://t.me/${botUsername}?start=${telegramId}`;
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(refLink)}&margin=15&bgcolor=ffffff`;
+
+        const captionRu = `🔗 *Link:* \`${refLink}\`\n🎫 *Promo:* \`${telegramId}\`\n\n✨ Поделитесь этим QR или промокодом — и получайте бонусы за каждого друга!`;
+        const caption = await getLocalizedText(lang, captionRu);
+
+        try {
+            await ctx.replyWithPhoto(qrUrl, { caption, parse_mode: 'Markdown' });
+        } catch (e) {
+            await ctx.reply(caption, { parse_mode: 'Markdown', disable_web_page_preview: true });
+        }
+        return;
+    }
 
     // --- STATE MACHINE (Сбор данных заказа) ---
     if (state) {
@@ -366,7 +419,7 @@ bot.on('text', async (ctx) => {
 
     // Helper: send all photos of an excursion as album
     const sendExcursionPhotos = async (ex) => {
-        const photos = (ex.image_urls && ex.image_urls.length > 0)
+        const photos = (ex.image_urls && Array.isArray(ex.image_urls) && ex.image_urls.length > 0)
             ? ex.image_urls
             : (ex.image_url ? [ex.image_url] : []);
 
@@ -374,14 +427,10 @@ bot.on('text', async (ctx) => {
 
         try {
             if (photos.length === 1) {
-                await ctx.replyWithPhoto(photos[0]);
+                await bot.telegram.sendPhoto(telegramId, photos[0]);
             } else {
-                // Telegram allows max 10 in a MediaGroup
-                const media = photos.slice(0, 10).map((url, i) => ({
-                    type: 'photo',
-                    media: url
-                }));
-                await ctx.replyWithMediaGroup(media);
+                const media = photos.slice(0, 10).map(url => ({ type: 'photo', media: url }));
+                await bot.telegram.sendMediaGroup(telegramId, media);
             }
         } catch (e) {
             console.warn('[MediaGroup] Error:', e.message);

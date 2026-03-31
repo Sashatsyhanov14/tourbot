@@ -433,6 +433,20 @@ if (loading) return (
                 <div className="bg-white p-3 rounded-2xl w-fit shadow-xl">
                   <img src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(refLink)}&margin=8`} alt="QR" className="block rounded-lg" />
                 </div>
+                <button
+                  onClick={() => {
+                    try {
+                      // Send the QR keyword to bot via Telegram WebApp
+                      window.Telegram?.WebApp?.sendData('📲 Мой QR / Промокод');
+                    } catch {
+                      tg?.close();
+                    }
+                  }}
+                  className="w-full py-3 bg-primary/15 border border-primary/30 rounded-2xl text-xs font-black text-primary uppercase tracking-widest active:scale-95 transition-all hover:bg-primary/25 flex items-center justify-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-[18px]">qr_code_scanner</span>
+                  {t.getQrBtn}
+                </button>
               </div>
             </div>
           </div>
