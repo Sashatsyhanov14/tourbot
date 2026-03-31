@@ -11,6 +11,7 @@ const MANAGER_ID = parseInt(process.env.MANAGER_ID);
 // Кеш языков и состояний пользователей
 const userLangCache = {};
 const userQrBtnCache = {}; // cached translated QR button text per user
+const lastShownExcursion = {}; // telegramId → excursionId of last shown excursion
 const userStates = new Map(); // { telegramId: { step: 'name'|'date'|'hotel', excursionId, data: {} } }
 
 // QR button keywords for detection in any language
@@ -121,7 +122,24 @@ bot.start(async (ctx) => {
     const startPayload = ctx.payload;
 
     try {
-        console.log(`[START] Triggered for ${username} (${telegramId})`);
+        console.log(`[START] Triggered for ${username} (${telegramId}), payload: ${startPayload}`);
+
+        // --- QR DEEP LINK from WebApp button ---
+        if (startPayload && startPayload.startsWith('getqr_')) {
+            const lang = userLangCache[telegramId] || ctx.from.language_code || 'ru';
+            const botUsername = ctx.botInfo?.username || 'Emedeotour_bot';
+            const refLink = `https://t.me/${botUsername}?start=${telegramId}`;
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(refLink)}&margin=15&bgcolor=ffffff`;
+            const captionRu = `🔗 *Link:* \`${refLink}\`\n🎫 *Promo:* \`${telegramId}\`\n\n✨ Поделитесь QR или промокодом — получайте 1$ за каждого друга!`;
+            const caption = await getLocalizedText(lang, captionRu);
+            try {
+                await ctx.replyWithPhoto(qrUrl, { caption, parse_mode: 'Markdown' });
+            } catch {
+                await ctx.reply(caption, { parse_mode: 'Markdown' });
+            }
+            return;
+        }
+
         userStates.delete(telegramId);
         await clearHistory(telegramId);
 
@@ -244,6 +262,66 @@ bot.on('text', async (ctx) => {
             await ctx.replyWithPhoto(qrUrl, { caption, parse_mode: 'Markdown' });
         } catch (e) {
             await ctx.reply(caption, { parse_mode: 'Markdown', disable_web_page_preview: true });
+        }
+        return;
+    }
+    // --- PHOTO REQUEST HANDLER ---
+    const PHOTO_KEYWORDS = ['фото', 'photo', 'фотографи', 'покажи', 'картинк', 'picture', 'image', 'resim', 'fotoğraf', 'görsel'];
+    const isPhotoRequest = PHOTO_KEYWORDS.some(kw => userText.toLowerCase().includes(kw)) && !state;
+
+    if (isPhotoRequest) {
+        const lang = userLangCache[telegramId] || 'ru';
+        try { await ctx.sendChatAction('upload_photo'); } catch (e) {}
+
+        // Find last mentioned excursion from cache or recent history
+        const { data: excursions } = await getExcursions();
+        let foundEx = null;
+
+        // Check cache first (last excursion shown to this user)
+        const cachedId = lastShownExcursion[telegramId];
+        if (cachedId && excursions) {
+            foundEx = excursions.find(e => e.id === cachedId);
+        }
+
+        // Fallback: scan last bot messages for excursion title
+        if (!foundEx && excursions) {
+            const { data: history } = await getHistory(telegramId);
+            const botMessages = (history || []).filter(m => m.role === 'assistant').slice(-5);
+            for (const ex of excursions) {
+                if (botMessages.some(m => m.content?.toLowerCase().includes(ex.title.toLowerCase()))) {
+                    foundEx = ex;
+                    break;
+                }
+            }
+        }
+
+        if (foundEx) {
+            const photos = (foundEx.image_urls && Array.isArray(foundEx.image_urls) && foundEx.image_urls.length > 0)
+                ? foundEx.image_urls
+                : (foundEx.image_url ? [foundEx.image_url] : []);
+
+            if (photos.length > 0) {
+                try {
+                    if (photos.length === 1) {
+                        await bot.telegram.sendPhoto(telegramId, photos[0]);
+                    } else {
+                        await bot.telegram.sendMediaGroup(telegramId, photos.slice(0, 10).map(url => ({ type: 'photo', media: url })));
+                    }
+                    const replyRu = `📸 Фотографии экскурсии «${foundEx.title}»!`;
+                    const reply = await getLocalizedText(lang, replyRu);
+                    await ctx.reply(reply);
+                } catch (e) {
+                    console.warn('[PhotoRequest] send error:', e.message);
+                    const errRu = `К сожалению, не удалось загрузить фото. 😔 Попробуй позже.`;
+                    await ctx.reply(await getLocalizedText(lang, errRu));
+                }
+            } else {
+                const noPhotoRu = `😔 У экскурсии «${foundEx.title}» пока нет фотографий. Хочешь узнать подробности или забронировать?`;
+                await ctx.reply(await getLocalizedText(lang, noPhotoRu));
+            }
+        } else {
+            const notFoundRu = `Напиши, какая экскурсия тебя интересует — и я покажу фото! 📸`;
+            await ctx.reply(await getLocalizedText(lang, notFoundRu));
         }
         return;
     }
@@ -466,12 +544,13 @@ bot.on('text', async (ctx) => {
             finalResponse = 'Пожалуйста, подожди минуту или напиши по-другому.';
         }
 
-        // Check if AI response describes exactly one excursion → send its photos
+        // Check if AI response mentions an excursion → cache it and send photos
         if (excursions) {
             const mentionedEx = excursions.find(e =>
                 finalResponse.toLowerCase().includes(e.title.toLowerCase())
             );
             if (mentionedEx) {
+                lastShownExcursion[telegramId] = mentionedEx.id;
                 await sendExcursionPhotos(mentionedEx);
             }
         }

@@ -435,11 +435,12 @@ if (loading) return (
                 </div>
                 <button
                   onClick={() => {
+                    // openTelegramLink triggers the bot with a start payload — most reliable method
+                    const link = `https://t.me/Emedeotour_bot?start=getqr_${user.telegram_id}`;
                     try {
-                      // Send the QR keyword to bot via Telegram WebApp
-                      window.Telegram?.WebApp?.sendData('📲 Мой QR / Промокод');
+                      tg?.openTelegramLink(link);
                     } catch {
-                      tg?.close();
+                      window.open(link, '_blank');
                     }
                   }}
                   className="w-full py-3 bg-primary/15 border border-primary/30 rounded-2xl text-xs font-black text-primary uppercase tracking-widest active:scale-95 transition-all hover:bg-primary/25 flex items-center justify-center gap-2"
