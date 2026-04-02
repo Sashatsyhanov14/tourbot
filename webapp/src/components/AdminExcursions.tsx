@@ -33,7 +33,7 @@ const ConfirmDialog: React.FC<{
     </div>
 );
 
-export default function AdminExcursions() {
+export default function AdminExcursions({ t }: { t: any }) {
     const [excursions, setExcursions] = useState<any[]>([]);
     const [isEditing, setIsEditing] = useState<any>(null);
     const [loading, setLoading] = useState(true);
