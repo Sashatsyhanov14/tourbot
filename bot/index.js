@@ -232,18 +232,23 @@ bot.command('ref', async (ctx) => {
 
 // --- WEB APP DATA (sendData from mini-app buttons) ---
 bot.on('web_app_data', async (ctx) => {
-    const dataStr = ctx.webAppData?.data.trim();
-    if (!dataStr) return;
+    const dataStr = ctx.webAppData?.data || ctx.message?.web_app_data?.data;
+    if (!dataStr) {
+        console.warn('[WEB_APP_DATA_EVENT] Received event but no data found in ctx.webAppData or ctx.message.web_app_data');
+        return;
+    }
     console.log(`[WEB_APP_DATA_EVENT] Data: ${dataStr}`);
-    // I will call a shared handler here
     await handleWebAppData(ctx, dataStr);
 });
 
 bot.on('message', async (ctx, next) => {
     const dataStr = ctx.message?.web_app_data?.data;
-    if (!dataStr) return next();
-    console.log(`[MESSAGE_EVENT_WEBAPP] Data: ${dataStr}`);
-    await handleWebAppData(ctx, dataStr);
+    if (dataStr) {
+        console.log(`[MESSAGE_EVENT_WEBAPP] Data caught in message event: ${dataStr}`);
+        await handleWebAppData(ctx, dataStr);
+        return;
+    }
+    return next();
 });
 
 async function handleWebAppData(ctx, dataStr) {
@@ -259,7 +264,7 @@ async function handleWebAppData(ctx, dataStr) {
             const { excursionId, excursionTitle, fullName, phone, tourDate } = data;
             
             // Create request in DB
-            await supabase.from('requests').insert([{
+            const { error: insErr } = await supabase.from('requests').insert([{
                 id: crypto.randomUUID(),
                 user_id: telegramId,
                 excursion_id: excursionId,
@@ -272,15 +277,24 @@ async function handleWebAppData(ctx, dataStr) {
                 created_at: new Date().toISOString()
             }]);
 
+            if (insErr) {
+                console.error('[BOOKING_INSERT_ERROR]', insErr);
+                return ctx.reply('❌ Ошибка при сохранении заявки. Попробуйте снова.');
+            }
+
             // Notify Managers
             const reportRu = `🆕 *НОВАЯ ЗАЯВКА ИЗ КАТАЛОГА!*\n\n📍 *Тур:* ${excursionTitle}\n👤 *Клиент:* ${fullName}\n📱 *Телефон:* \`${phone}\`\n🗓️ *Дата:* ${tourDate}\n\n🚀 _Заявка оформлена через Mini App!_`;
             const report = await getLocalizedText('ru', reportRu);
 
             const { data: managers } = await supabase.from('users').select('telegram_id').in('role', ['founder', 'manager']);
-            if (managers) {
+            if (managers && managers.length > 0) {
                 for (const m of managers) {
-                    try { await bot.telegram.sendMessage(m.telegram_id, report, { parse_mode: 'Markdown' }); } catch (e) {}
+                    try { await bot.telegram.sendMessage(m.telegram_id, report, { parse_mode: 'Markdown' }); } catch (e) {
+                        console.error(`[MANAGER_NOTIFY_ERROR] to ${m.telegram_id}: ${e.message}`);
+                    }
                 }
+            } else {
+                console.warn('[handleWebAppData] No managers found to notify.');
             }
 
             const successRu = '✅ *Заявка отправлена!*\n\nНаш менеджер свяжется с вами в ближайшее время. Спасибо!';
@@ -318,8 +332,9 @@ async function handleWebAppData(ctx, dataStr) {
             return ctx.reply(confirmMsg, { parse_mode: 'Markdown' });
         }
     } catch (e) {
+        console.error(`[HANDLE_DATA_FATAL_ERROR] ${e.message}`, e);
         // Fallback for QR keywords if not JSON
-        if (QR_KEYWORDS.some(kw => dataStr.toLowerCase().includes(kw)) || dataStr.includes('QR')) {
+        if (typeof dataStr === 'string' && (QR_KEYWORDS.some(kw => dataStr.toLowerCase().includes(kw)) || dataStr.includes('QR'))) {
             const botUsername = ctx.botInfo?.username || '';
             const refLink = `https://t.me/${botUsername}?start=${telegramId}`;
             const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(refLink)}&margin=15&bgcolor=ffffff`;
