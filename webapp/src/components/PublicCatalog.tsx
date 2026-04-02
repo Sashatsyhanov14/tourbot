@@ -110,10 +110,10 @@ export default function PublicCatalog({ t, lang }: { t: any, lang: string }) {
                                     <p className="text-2xl font-black text-primary">${ex.price_rub}</p>
                                 </div>
                                 <div className="text-right space-y-1">
-                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{lang === 'ru' ? 'Длительность' : 'Duration'}</p>
-                                    <p className="text-sm font-bold text-white flex items-center justify-end gap-1">
-                                        <span className="material-symbols-outlined text-[16px] text-slate-400">schedule</span>
-                                        {ex.duration}
+                                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">{lang === 'ru' ? 'Длительность' : 'Duration'}</p>
+                                    <p className="text-base font-bold text-white flex items-center justify-end gap-1.5">
+                                        <span className="material-symbols-outlined text-[18px] text-primary/70">schedule</span>
+                                        {ex.duration || (lang === 'ru' ? '4 часа' : '4 hours')}
                                     </p>
                                 </div>
                             </div>

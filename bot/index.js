@@ -1,5 +1,6 @@
 const { Telegraf, session, Markup } = require('telegraf');
 const dotenv = require('dotenv');
+const crypto = require('crypto');
 const { supabase, getUser, createUser, getExcursions, saveMessage, getHistory, createRequest, getFaq, clearHistory } = require('./src/supabase');
 const { getChatResponse, getLocalizedText, getManagerReport } = require('./src/openai');
 
@@ -226,7 +227,9 @@ bot.on('message', async (ctx, next) => {
     const lang = userLangCache[telegramId] || 'ru';
 
     try {
+        console.log(`[WEBAPP_DATA] Raw: ${dataStr}`);
         const data = JSON.parse(dataStr);
+        console.log(`[WEBAPP_DATA] Parsed Type: ${data.type}`);
         
         // --- Quick Booking from Catalog ---
         if (data.type === 'quick_book') {
