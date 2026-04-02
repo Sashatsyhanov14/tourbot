@@ -61,15 +61,14 @@ export default function PublicCatalog({ t, lang }: { t: any, lang: string }) {
         const bookingData = {
             type: 'quick_book',
             excursionId: bookingEx.id,
-            excursionTitle: (lang === 'en' ? bookingEx.title_en : lang === 'tr' ? bookingEx.title_tr : bookingEx.title) || bookingEx.title,
-            priceRub: bookingEx.price_rub,
             fullName: formData.name,
             phone: formData.phone,
             tourDate: formData.date
         };
 
-        tg?.showAlert(`Отправка данных: ${bookingData.excursionTitle}`);
         tg?.sendData(JSON.stringify(bookingData));
+        setTimeout(() => tg?.close(), 100);
+        
         setBookingEx(null);
     };
 

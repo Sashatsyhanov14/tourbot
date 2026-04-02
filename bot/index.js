@@ -261,18 +261,27 @@ async function handleWebAppData(ctx, dataStr) {
         
         // --- Quick Booking from Catalog ---
         if (data.type === 'quick_book') {
-            const { excursionId, excursionTitle, fullName, phone, tourDate } = data;
+            let { excursionId, excursionTitle, fullName, phone, tourDate, priceRub } = data;
             
+            // If title is missing (simplified payload), fetch from DB
+            if (!excursionTitle && excursionId) {
+                const { data: ex } = await supabase.from('excursions').select('title, price_rub').eq('id', excursionId).single();
+                if (ex) {
+                    excursionTitle = ex.title;
+                    priceRub = ex.price_rub;
+                }
+            }
+
             // Create request in DB
             const { error: insErr } = await supabase.from('requests').insert([{
                 id: crypto.randomUUID(),
                 user_id: telegramId,
                 excursion_id: excursionId,
-                excursion_title: excursionTitle,
+                excursion_title: excursionTitle || 'Unknown Excursion',
                 full_name: fullName,
                 tour_date: tourDate,
                 phone: phone,
-                price_rub: data.priceRub || 0,
+                price_rub: priceRub || data.priceRub || 0,
                 status: 'from_webapp',
                 created_at: new Date().toISOString()
             }]);
