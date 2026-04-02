@@ -3,9 +3,15 @@ const { getLocalizedText } = require('../src/openai');
 const dotenv = require('dotenv');
 const path = require('path');
 
-dotenv.config({ path: path.join(__dirname, '../.env') });
+const envPath = path.resolve(__dirname, '../.env');
+dotenv.config({ path: envPath });
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+console.log(`[CONFIG] Loading .env from: ${envPath}`);
+
+const supabase = createClient(
+    process.env.SUPABASE_URL || '', 
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || ''
+);
 
 async function translateAll() {
     console.log('🚀 Starting AI Translation for Excursions...');
