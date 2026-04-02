@@ -128,6 +128,31 @@ bot.action(/^bonus_req_(.+)$/, async (ctx) => {
     }
 });
 
+bot.action(/^start_chat_book_(.+)$/, async (ctx) => {
+    const telegramId = ctx.from.id;
+    const excursionId = ctx.match[1];
+    const { data: excursions } = await getExcursions();
+    const selectedEx = excursions ? excursions.find(e => e.id === excursionId) : null;
+    
+    if (!selectedEx) return ctx.answerCbQuery('❌ Экскурсия не найдена.', { show_alert: true });
+
+    userStates.set(telegramId, { step: 'name', excursionId, data: {} });
+    const lang = userLangCache[telegramId] || 'ru';
+    const namePromptRu = `Оформим бронь здесь! 😍\n\n👤 Как к вам можно обращаться? Напишите, пожалуйста, ваше ФИО.`;
+    const namePrompt = await getLocalizedText(lang, namePromptRu);
+    
+    await ctx.answerCbQuery();
+    return ctx.reply(namePrompt, Markup.inlineKeyboard([[Markup.button.callback('❌ Отмена', 'cancel_stepper')]]));
+});
+
+bot.action('cancel_stepper', async (ctx) => {
+    userStates.delete(ctx.from.id);
+    const lang = userLangCache[ctx.from.id] || 'ru';
+    const msg = await getLocalizedText(lang, '❌ Бронирование отменено. Если возникнут вопросы — я на связи! 😊');
+    await ctx.answerCbQuery('Отменено');
+    return ctx.editMessageText(msg, Markup.inlineKeyboard([]));
+});
+
 // --- CLIENT FLOW ---
 bot.start(async (ctx) => {
     const telegramId = ctx.from.id;
@@ -452,30 +477,45 @@ bot.on('text', async (ctx) => {
     // --- STATE MACHINE (Сбор данных заказа) ---
     if (state) {
         const lang = userLangCache[telegramId] || 'ru';
+        
+        // --- SMART ESCAPE: Если похоже на вопрос или смену темы ---
+        const questionWords = ['как', 'где', 'что', 'когда', 'почему', 'сколько', 'цена', 'стоимость', 'далеко', 'какой', 'какие', 'есть', 'можно'];
+        const lowerText = userText.toLowerCase();
+        const isQuestion = 
+            userText.includes('?') || 
+            userText.length > 50 || 
+            questionWords.some(w => lowerText.includes(w)) ||
+            ['нет', 'отмена', 'не надо', 'передумал', 'погоди'].some(w => lowerText.includes(w));
 
-        if (state.step === 'name') {
-            state.data.fullName = userText;
-            state.step = 'date';
-            const msg = await getLocalizedText(lang, '🗓️ Отлично! Теперь напишите желаемую дату (например: завтра, 25 мая, или конкретный период):');
-            return ctx.reply(msg);
-        }
+        const cancelBtn = [Markup.button.callback('❌ Отмена', 'cancel_stepper')];
 
-        if (state.step === 'date') {
-            state.data.tourDate = userText;
-            state.step = 'hotel';
-            const msg = await getLocalizedText(lang, '🏨 Понял. Напишите ваш город и название отеля (или адрес, откуда вас забрать):');
-            return ctx.reply(msg);
-        }
+        if (isQuestion) {
+            userStates.delete(telegramId);
+            // Проваливаемся ниже в AI чат
+        } else {
+            if (state.step === 'name') {
+                state.data.fullName = userText;
+                state.step = 'date';
+                const msg = await getLocalizedText(lang, '🗓️ Отлично! Теперь напишите желаемую дату (например: завтра, 25 мая, или конкретный период):');
+                return ctx.reply(msg, Markup.inlineKeyboard([cancelBtn]));
+            }
 
-        if (state.step === 'hotel') {
-            state.data.hotelName = userText;
-            state.step = 'phone';
-            const msg = await getLocalizedText(lang, '📞 Почти готово! Укажите номер WhatsApp для связи с оператором:');
-            return ctx.reply(msg);
-        }
+            if (state.step === 'date') {
+                state.data.tourDate = userText;
+                state.step = 'hotel';
+                const msg = await getLocalizedText(lang, '🏨 Понял. Напишите ваш город и название отеля (или адрес, откуда вас забрать):');
+                return ctx.reply(msg, Markup.inlineKeyboard([cancelBtn]));
+            }
 
-        if (state.step === 'phone') {
-            state.data.phone = userText;
+            if (state.step === 'hotel') {
+                state.data.hotelName = userText;
+                state.step = 'phone';
+                const msg = await getLocalizedText(lang, '📞 Почти готово! Укажите номер WhatsApp для связи с оператором:');
+                return ctx.reply(msg, Markup.inlineKeyboard([cancelBtn]));
+            }
+
+            if (state.step === 'phone') {
+                state.data.phone = userText;
             const excursionId = state.excursionId;
 
             const { data: excursions } = await getExcursions();
@@ -556,6 +596,7 @@ bot.on('text', async (ctx) => {
                 }
             }
             return;
+            }
         }
     }
 
@@ -618,84 +659,68 @@ bot.on('text', async (ctx) => {
         let finalResponse = aiResponse.replace(/\[BOOK_REQUEST:.*?\]/gi, '').replace(/\[LANG:.*?\]/gi, '').trim();
 
 
-    // Helper: send all photos of an excursion as album
-    const sendExcursionPhotos = async (ex) => {
-        const photos = (ex.image_urls && Array.isArray(ex.image_urls))
-            ? ex.image_urls.filter(url => url && url.startsWith('http'))
-            : (ex.image_url ? [ex.image_url] : []);
-
-        if (photos.length === 0) return;
-
-        try {
-            console.log(`[PHOTOS] Sending ${photos.length} photos for: ${ex.title}`);
-            if (photos.length === 1) {
-                await bot.telegram.sendPhoto(telegramId, photos[0]);
-            } else {
-                const media = photos.slice(0, 10).map(url => ({ type: 'photo', media: url }));
-                await bot.telegram.sendMediaGroup(telegramId, media);
-            }
-        } catch (e) {
-            console.warn('[MediaGroup] Error sending photos:', e.message);
-        }
-    };
 
     if (bookMatch) {
-        const excursionId = bookMatch[1];
+        const excursionId = bookMatch[1].trim();
         const selectedEx = excursions ? excursions.find(e => e.id === excursionId) : null;
 
         if (selectedEx) {
+            // "Silent Start" - входим в стейт без лишних кнопок, т.к. AI уже спросил имя
             userStates.set(telegramId, { step: 'name', excursionId, data: {} });
-
-            const currentLang = userLangCache[telegramId] || 'ru';
-            const namePromptRu = `Прекрасный выбор! 😍 Чтобы оформить заявку на экскурсию «${selectedEx.title}», мне нужно уточнить пару деталей.\n\n👤 Как к вам можно обращаться? Напишите, пожалуйста, ваше ФИО.`;
-            const namePrompt = await getLocalizedText(currentLang, namePromptRu);
-
+            
             await saveMessage(telegramId, 'assistant', finalResponse);
-
-            // Send photos album first
-            await sendExcursionPhotos(selectedEx);
-
-            try {
-                await ctx.reply(finalResponse, { parse_mode: 'Markdown' });
-            } catch (e) {
-                await ctx.reply(finalResponse);
-            }
-            return ctx.reply(namePrompt);
+            await sendExcursionPhotos(telegramId, selectedEx);
+            
+            try { return await ctx.reply(finalResponse, { parse_mode: 'Markdown' }); } catch (e) { return ctx.reply(finalResponse); }
         }
     }
 
     if (!finalResponse || finalResponse.trim() === '') {
-        finalResponse = 'Пожалуйста, подожди минуту или напиши по-другому.';
+        finalResponse = 'Извините, я задумался. Повторите, пожалуйста, ваш вопрос.';
     }
 
-    // Check if AI response mentions an excursion → cache it and send photos
+    // Mentioned excursion check (to show photos even if not booking)
     if (excursions) {
-        const cleanText = finalResponse.toLowerCase().replace(/[\*\_\`\#]/g, '');
-        const mentionedEx = excursions.find(e => {
-            const title = e.title.toLowerCase();
-            return cleanText.includes(title) || (title.length > 5 && cleanText.includes(title.substring(0, title.length - 2)));
-        });
-        
+        const cleanText = finalResponse.toLowerCase();
+        const mentionedEx = excursions.find(ex => cleanText.includes(ex.title.toLowerCase()));
         if (mentionedEx) {
-            console.log(`[AI] Mentioned Excursion: ${mentionedEx.title}`);
             lastShownExcursion[telegramId] = mentionedEx.id;
-            await sendExcursionPhotos(mentionedEx);
+            await sendExcursionPhotos(telegramId, mentionedEx);
         }
     }
 
-        await saveMessage(telegramId, 'assistant', finalResponse);
-        try {
-            await ctx.reply(finalResponse, { parse_mode: 'Markdown' });
-        } catch (mdError) {
-            console.warn('[GENERIC] Markdown fallback:', mdError.message);
-            await ctx.reply(finalResponse);
-        }
+    await saveMessage(telegramId, 'assistant', finalResponse);
+    try {
+        await ctx.reply(finalResponse, { parse_mode: 'Markdown' });
+    } catch (err) {
+        await ctx.reply(finalResponse);
+    }
 
     } catch (err) {
-        console.error('CRITICAL BOT ERROR:', err);
-        try { await ctx.reply('Извини, произошла ошибка. Попробуй позже.'); } catch (e) { }
+        console.error('CRITICAL AI CHAT ERROR:', err);
+        try { await ctx.reply('Извини, произошла ошибка. Попробуй позже. 🙏'); } catch (e) { }
     }
 });
+
+// Helper: send all photos of an excursion as album
+async function sendExcursionPhotos(telegramId, ex) {
+    const photos = (ex.image_urls && Array.isArray(ex.image_urls))
+        ? ex.image_urls.filter(url => url && url.startsWith('http'))
+        : (ex.image_url ? [ex.image_url] : []);
+
+    if (photos.length === 0) return;
+
+    try {
+        if (photos.length === 1) {
+            await bot.telegram.sendPhoto(telegramId, photos[0]);
+        } else {
+            const media = photos.slice(0, 10).map(url => ({ type: 'photo', media: url }));
+            await bot.telegram.sendMediaGroup(telegramId, media);
+        }
+    } catch (e) {
+        console.warn('[MediaGroup] Error:', e.message);
+    }
+}
 
 // Запуск
 if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {

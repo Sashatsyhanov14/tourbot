@@ -50,14 +50,15 @@ Rules:
    "📍 City | ⏱️ Duration | 💰 $Price"
    "📝 Short description (1-2 sentences)"
    [blank line]
-   "Interested? I can book it! Or show the next one? ➡️"
+   "Interested? I can book it through a smart form! Or show the next one? ➡️"
    
    NEVER dump the full list at once!
    Use ONLY real data from this database:
 ${excursions.map(e => `- [${e.city}] ${e.title} | ${e.duration} | $${e.price_rub}${e.description ? ' — ' + e.description.slice(0, 80) : ''}`).join('\n')}
 
-6. SALE: If intent is "sale" - write a short friendly confirmation ("Great, booking it! 🎉"). Nothing extra.
-
+6. SALE: If intent is "sale" with "excursion_id" - write a short friendly confirmation AND ask for the client's name to start the booking.
+   Example: "Отлично! С радостью забронирую для вас «[Название]». 🏝️ Напишите, пожалуйста, ваше ФИО для оформления? (Или забронируйте в 1 клик через наше Mini App)."
+   
 ${faqText ? `7. For FAQ questions (intent = faq) you MUST answer STRICTLY from this knowledge base — do NOT improvise:\n${faqText}` : '7. No FAQ data loaded — if asked a general question, say you will check and respond shortly.'}
 `;
 

@@ -251,11 +251,12 @@ const App: React.FC = () => {
         tg.expand();
       }
 
-      // 1. Try URL Parameters (uid=) - most reliable for TG Desktop
       const params = new URLSearchParams(window.location.search);
       const uid = params.get('uid');
+      
       if (uid && !isNaN(parseInt(uid))) {
         await fetchUserData(parseInt(uid));
+        // If we have an excursion ID, keep the catalog tab active
         return;
       }
 
@@ -460,7 +461,10 @@ if (loading) return (
       case 'excursions': return <AdminExcursions t={t} />;
       case 'requests': return <AdminRequests t={t} />;
       case 'faq': return <AdminFaq t={t} />;
-      case 'catalog': return <PublicCatalog t={t} lang={lang} />;
+      case 'catalog': 
+        const params = new URLSearchParams(window.location.search);
+        const eid = params.get('eid');
+        return <PublicCatalog t={t} lang={lang} initialExcursionId={eid} />;
       default: return null;
     }
   };

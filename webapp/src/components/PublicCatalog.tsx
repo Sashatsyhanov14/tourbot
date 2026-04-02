@@ -27,7 +27,7 @@ interface Excursion {
     meeting_point_tr?: string;
 }
 
-export default function PublicCatalog({ t, lang }: { t: any, lang: string }) {
+export default function PublicCatalog({ t, lang, initialExcursionId }: { t: any, lang: string, initialExcursionId?: string | null }) {
     const [excursions, setExcursions] = useState<Excursion[]>([]);
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(true);
@@ -40,6 +40,15 @@ export default function PublicCatalog({ t, lang }: { t: any, lang: string }) {
     useEffect(() => {
         fetchExcursions();
     }, []);
+
+    useEffect(() => {
+        if (initialExcursionId && excursions.length > 0) {
+            const ex = excursions.find(e => e.id === initialExcursionId);
+            if (ex) {
+                setBookingEx(ex);
+            }
+        }
+    }, [initialExcursionId, excursions]);
 
     const fetchExcursions = async () => {
         setLoading(true);
