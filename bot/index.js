@@ -220,6 +220,7 @@ bot.command('ref', async (ctx) => {
 
 // --- WEB APP DATA (sendData from mini-app buttons) ---
 bot.on('message', async (ctx, next) => {
+    console.log(`[INCOMING] From ${ctx.from.id}: ${ctx.message.text || 'non-text'}`);
     const dataStr = ctx.message?.web_app_data?.data;
     if (!dataStr) return next();
 

@@ -52,6 +52,7 @@ export default function PublicCatalog({ t, lang }: { t: any, lang: string }) {
             tourDate: formData.date
         };
 
+        tg?.showAlert(`Отправка данных: ${bookingEx.title}`);
         tg?.sendData(JSON.stringify(bookingData));
         setBookingEx(null);
     };
