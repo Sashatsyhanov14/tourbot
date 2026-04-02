@@ -20,6 +20,18 @@ const QR_KEYWORDS = ['qr', 'промокод', 'promo', 'refer', 'реферал
 
 bot.use(session());
 
+// --- TOP-LEVEL DEBUG LOGGING ---
+bot.use(async (ctx, next) => {
+    if (ctx.message) {
+        const type = ctx.message.web_app_data ? 'WEB_APP_DATA' : (ctx.message.text ? 'TEXT' : 'OTHER');
+        console.log(`[DEBUG_TOP] Message from ${ctx.from?.id}: ${type}`);
+        if (ctx.message.web_app_data) {
+            console.log(`[DEBUG_TOP] Data: ${ctx.message.web_app_data.data}`);
+        }
+    }
+    return next();
+});
+
 // --- MANAGER ACTIONS ---
 bot.action(/^accept_req_(.+)$/, async (ctx) => {
     const requestId = ctx.match[1];
@@ -219,18 +231,28 @@ bot.command('ref', async (ctx) => {
 });
 
 // --- WEB APP DATA (sendData from mini-app buttons) ---
+bot.on('web_app_data', async (ctx) => {
+    const dataStr = ctx.webAppData?.data.trim();
+    if (!dataStr) return;
+    console.log(`[WEB_APP_DATA_EVENT] Data: ${dataStr}`);
+    // I will call a shared handler here
+    await handleWebAppData(ctx, dataStr);
+});
+
 bot.on('message', async (ctx, next) => {
-    console.log(`[INCOMING] From ${ctx.from.id}: ${ctx.message.text || 'non-text'}`);
     const dataStr = ctx.message?.web_app_data?.data;
     if (!dataStr) return next();
+    console.log(`[MESSAGE_EVENT_WEBAPP] Data: ${dataStr}`);
+    await handleWebAppData(ctx, dataStr);
+});
 
+async function handleWebAppData(ctx, dataStr) {
     const telegramId = ctx.from.id;
     const lang = userLangCache[telegramId] || 'ru';
 
     try {
-        console.log(`[WEBAPP_DATA] Raw: ${dataStr}`);
         const data = JSON.parse(dataStr);
-        console.log(`[WEBAPP_DATA] Parsed Type: ${data.type}`);
+        console.log(`[HANDLE_DATA] Type: ${data.type}`);
         
         // --- Quick Booking from Catalog ---
         if (data.type === 'quick_book') {
@@ -252,7 +274,7 @@ bot.on('message', async (ctx, next) => {
 
             // Notify Managers
             const reportRu = `🆕 *НОВАЯ ЗАЯВКА ИЗ КАТАЛОГА!*\n\n📍 *Тур:* ${excursionTitle}\n👤 *Клиент:* ${fullName}\n📱 *Телефон:* \`${phone}\`\n🗓️ *Дата:* ${tourDate}\n\n🚀 _Заявка оформлена через Mini App!_`;
-            const report = await getLocalizedText('ru', reportRu); // Managers usually RU
+            const report = await getLocalizedText('ru', reportRu);
 
             const { data: managers } = await supabase.from('users').select('telegram_id').in('role', ['founder', 'manager']);
             if (managers) {
@@ -263,7 +285,7 @@ bot.on('message', async (ctx, next) => {
 
             const successRu = '✅ *Заявка отправлена!*\n\nНаш менеджер свяжется с вами в ближайшее время. Спасибо!';
             const successMsg = await getLocalizedText(lang, successRu);
-            return ctx.reply(successMsg, { parse_mode: 'Markdown' });
+            try { return await ctx.reply(successMsg, { parse_mode: 'Markdown' }); } catch (e) { return ctx.reply(successMsg); }
         }
     } catch (e) {
         // Fallback for QR keywords if not JSON
@@ -280,6 +302,13 @@ bot.on('message', async (ctx, next) => {
             }
         }
     }
+}
+
+// Keep a minimal message event to not block other logic
+bot.on('message', async (ctx, next) => {
+    if (ctx.message?.web_app_data) return; // already handled
+    console.log(`[INCOMING] From ${ctx.from.id}: ${ctx.message.text || 'non-text'}`);
+    return next();
 });
 
 bot.on('text', async (ctx) => {
