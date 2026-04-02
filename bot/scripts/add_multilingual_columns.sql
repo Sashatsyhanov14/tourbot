@@ -1,0 +1,14 @@
+-- Add multilingual columns to excursions table
+ALTER TABLE excursions 
+ADD COLUMN IF NOT EXISTS title_en TEXT,
+ADD COLUMN IF NOT EXISTS title_tr TEXT,
+ADD COLUMN IF NOT EXISTS city_en TEXT,
+ADD COLUMN IF NOT EXISTS city_tr TEXT,
+ADD COLUMN IF NOT EXISTS description_en TEXT,
+ADD COLUMN IF NOT EXISTS description_tr TEXT,
+ADD COLUMN IF NOT EXISTS duration_en TEXT,
+ADD COLUMN IF NOT EXISTS duration_tr TEXT,
+ADD COLUMN IF NOT EXISTS included_en TEXT,
+ADD COLUMN IF NOT EXISTS included_tr TEXT,
+ADD COLUMN IF NOT EXISTS meeting_point_en TEXT,
+ADD COLUMN IF NOT EXISTS meeting_point_tr TEXT;

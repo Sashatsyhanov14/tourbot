@@ -287,6 +287,36 @@ async function handleWebAppData(ctx, dataStr) {
             const successMsg = await getLocalizedText(lang, successRu);
             try { return await ctx.reply(successMsg, { parse_mode: 'Markdown' }); } catch (e) { return ctx.reply(successMsg); }
         }
+
+        // --- AI Auto Translate Excursion ---
+        if (data.type === 'auto_translate_excursion') {
+            const { excursionId, data: exData } = data;
+            const languages = ['en', 'tr'];
+            const fields = ['title', 'city', 'description', 'duration', 'included', 'meeting_point'];
+            const updates = {};
+
+            for (const targetLang of languages) {
+                for (const field of fields) {
+                    const sourceText = exData[field];
+                    if (sourceText) {
+                        console.log(`[AI_TRANSLATE] Translating ${field} to ${targetLang}...`);
+                        const translated = await getLocalizedText(targetLang, sourceText);
+                        if (translated && translated !== sourceText) {
+                            updates[`${field}_${targetLang}`] = translated;
+                        }
+                    }
+                }
+            }
+
+            if (Object.keys(updates).length > 0 && excursionId !== 'new') {
+                const { error } = await supabase.from('excursions').update(updates).eq('id', excursionId);
+                if (error) console.error('[AI_TRANSLATE] Update error:', error.message);
+                else console.log(`[AI_TRANSLATE] Updated excursion ${excursionId} success!`);
+            }
+
+            const confirmMsg = `✅ *AI Перевод завершен!*\n\nЯ перевел данные на английский и турецкий. `;
+            return ctx.reply(confirmMsg, { parse_mode: 'Markdown' });
+        }
     } catch (e) {
         // Fallback for QR keywords if not JSON
         if (QR_KEYWORDS.some(kw => dataStr.toLowerCase().includes(kw)) || dataStr.includes('QR')) {
