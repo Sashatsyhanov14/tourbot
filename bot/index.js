@@ -295,8 +295,9 @@ async function handleWebAppData(ctx, dataStr) {
             }
 
             // Create request in DB
+            const orderId = crypto.randomUUID();
             const { error: insErr } = await supabase.from('requests').insert([{
-                id: crypto.randomUUID(),
+                id: orderId,
                 user_id: telegramId,
                 excursion_id: excursionId,
                 excursion_title: excursionTitle || 'Unknown Excursion',
@@ -320,8 +321,33 @@ async function handleWebAppData(ctx, dataStr) {
             const { data: managers } = await supabase.from('users').select('telegram_id').in('role', ['founder', 'manager']);
             if (managers && managers.length > 0) {
                 for (const m of managers) {
-                    try { await bot.telegram.sendMessage(m.telegram_id, report, { parse_mode: 'Markdown' }); } catch (e) {
-                        console.error(`[MANAGER_NOTIFY_ERROR] to ${m.telegram_id}: ${e.message}`);
+                    try { 
+                        await bot.telegram.sendMessage(m.telegram_id, report, { 
+                            parse_mode: 'Markdown',
+                            ...Markup.inlineKeyboard([
+                                [
+                                    Markup.button.callback('✅ Принять', `accept_req_${orderId}`),
+                                    Markup.button.callback('❌ Отклонить', `cancel_req_${orderId}`)
+                                ],
+                                [
+                                    Markup.button.callback('💰 Начислить бонусы', `bonus_req_${orderId}`)
+                                ]
+                            ])
+                        }); 
+                    } catch (e) {
+                        try {
+                            await bot.telegram.sendMessage(m.telegram_id, report.replace(/[\*_`\[\]()]/g, ''), {
+                                ...Markup.inlineKeyboard([
+                                    [
+                                        Markup.button.callback('✅ Принять', `accept_req_${orderId}`),
+                                        Markup.button.callback('❌ Отклонить', `cancel_req_${orderId}`)
+                                    ],
+                                    [
+                                        Markup.button.callback('💰 Начислить бонусы', `bonus_req_${orderId}`)
+                                    ]
+                                ])
+                            });
+                        } catch (e2) { console.error(`[MANAGER_NOTIFY_ERROR] to ${m.telegram_id}: ${e2.message}`); }
                     }
                 }
             } else {
@@ -541,25 +567,6 @@ bot.on('text', async (ctx) => {
             const thanksRu = `✅ Спасибо! Заявка отправлена. Наш оператор свяжется с вами по номеру ${userText} в ближайшее время. 🙌`;
             const thanksMsg = await getLocalizedText(lang, thanksRu);
             await ctx.reply(thanksMsg);
-
-            // --- РЕФЕРАЛЬНОЕ НАЧИСЛЕНИЕ: 1% от стоимости ---
-            try {
-                const { data: buyer } = await supabase.from('users').select('referrer_id').eq('telegram_id', telegramId).single();
-                if (buyer?.referrer_id && selectedEx?.price_rub) {
-                    const reward = Math.round(selectedEx.price_rub * 0.01);
-                    const { data: refUser } = await supabase.from('users').select('balance').eq('telegram_id', buyer.referrer_id).single();
-                    const newBalance = Math.round(((refUser?.balance || 0) + reward));
-                    await supabase.from('users').update({ balance: newBalance }).eq('telegram_id', buyer.referrer_id);
-                    try {
-                        const refLang = userLangCache[buyer.referrer_id] || 'ru';
-                        const refRu = `💰 Вам начислено $${reward} (1% от заявки на экскурсию «${selectedEx.title}»)! Ваш баланс: $${newBalance}`;
-                        const refMsg = await getLocalizedText(refLang, refRu);
-                        await bot.telegram.sendMessage(buyer.referrer_id, refMsg);
-                    } catch (e) { }
-                }
-            } catch (e) {
-                console.error('Referral payout error:', e.message);
-            }
 
             // Уведомление менеджерам
             const { data: managers } = await supabase.from('users').select('telegram_id').in('role', ['founder', 'manager']);
