@@ -256,7 +256,19 @@ async function handleWebAppData(ctx, dataStr) {
     const lang = userLangCache[telegramId] || 'ru';
 
     try {
-        const data = JSON.parse(dataStr);
+        let data;
+        if (typeof dataStr === 'object' && dataStr !== null) {
+            data = dataStr;
+        } else {
+            try {
+                data = JSON.parse(dataStr);
+            } catch (jsonErr) {
+                console.error(`[handleWebAppData] JSON Parse Error for: ${dataStr}`, jsonErr.message);
+                // Fallback for QR keywords logic below
+                throw jsonErr; 
+            }
+        }
+        
         console.log(`[HANDLE_DATA] Type: ${data.type}`);
         
         // --- Quick Booking from Catalog ---
