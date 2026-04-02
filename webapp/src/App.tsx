@@ -5,6 +5,7 @@ import AdminExcursions from './components/AdminExcursions';
 import AdminFaq from './components/AdminFaq';
 import AdminRequests from './components/AdminRequests';
 import WithdrawModal from './components/WithdrawModal';
+import PublicCatalog from './components/PublicCatalog';
 
 declare global {
   interface Window {
@@ -21,6 +22,7 @@ const translations: any = {
     tabExcursions: "Экскурсии",
     tabRequests: "Заявки",
     tabFaq: "FAQ",
+    tabCatalog: "Каталог",
     loading: "Загрузка...",
     bonusBalance: "Ваш баланс",
     invitedCount: "Приглашено друзей",
@@ -69,6 +71,7 @@ const translations: any = {
     tabExcursions: "Excursions",
     tabRequests: "Requests",
     tabFaq: "FAQ",
+    tabCatalog: "Catalog",
     loading: "Loading...",
     bonusBalance: "Your balance",
     invitedCount: "Invited friends",
@@ -114,9 +117,10 @@ const translations: any = {
     adminSubtitle: "Küresel İstatistikler",
     tabReferral: "Referansım",
     tabStats: "Panel",
-    tabExcursions: "Turlar",
-    tabRequests: "Başvurular",
+    tabExcursions: "Geziler",
+    tabRequests: "Talepler",
     tabFaq: "SSS",
+    tabCatalog: "Katalog",
     loading: "Yükleniyor...",
     bonusBalance: "Bakiyeniz",
     invitedCount: "Davet edilenler",
@@ -164,7 +168,7 @@ const App: React.FC = () => {
   const [loginInputId, setLoginInputId] = useState('');
   const [lang, setLang] = useState<'ru' | 'en' | 'tr'>('ru');
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'referral' | 'stats' | 'excursions' | 'requests' | 'faq'>('referral');
+  const [activeTab, setActiveTab] = useState<'referral' | 'stats' | 'excursions' | 'requests' | 'faq' | 'catalog'>('catalog');
   const [referralStats, setReferralStats] = useState({ invited: 0, requests: 0, earned: 0 });
   const [referralDetails, setReferralDetails] = useState<any[]>([]);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
@@ -456,6 +460,7 @@ if (loading) return (
       case 'excursions': return <AdminExcursions t={t} />;
       case 'requests': return <AdminRequests t={t} />;
       case 'faq': return <AdminFaq t={t} />;
+      case 'catalog': return <PublicCatalog t={t} lang={lang} />;
       default: return null;
     }
   };
@@ -502,6 +507,16 @@ if (loading) return (
         >
           <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: activeTab === 'referral' ? "'FILL' 1" : "'FILL' 0" }}>group</span>
           <span className="text-[8px] font-black uppercase tracking-wider mt-0.5">{lang === 'ru' ? 'Бонусы' : lang === 'tr' ? 'Bonus' : 'Bonus'}</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('catalog')}
+          className={`flex flex-col items-center px-3 py-2 rounded-2xl transition-all ${
+            activeTab === 'catalog' ? 'text-primary bg-primary/10' : 'text-slate-500 hover:text-slate-300'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: activeTab === 'catalog' ? "'FILL' 1" : "'FILL' 0" }}>auto_awesome_motion</span>
+          <span className="text-[8px] font-black uppercase tracking-wider mt-0.5">{t.tabCatalog}</span>
         </button>
 
         {isOwner && (

@@ -219,22 +219,61 @@ bot.command('ref', async (ctx) => {
 
 // --- WEB APP DATA (sendData from mini-app buttons) ---
 bot.on('message', async (ctx, next) => {
-    const data = ctx.message?.web_app_data?.data;
-    if (!data) return next();
+    const dataStr = ctx.message?.web_app_data?.data;
+    if (!dataStr) return next();
 
     const telegramId = ctx.from.id;
     const lang = userLangCache[telegramId] || 'ru';
 
-    if (QR_KEYWORDS.some(kw => data.toLowerCase().includes(kw)) || data.includes('QR')) {
-        const botUsername = ctx.botInfo?.username || '';
-        const refLink = `https://t.me/${botUsername}?start=${telegramId}`;
-        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(refLink)}&margin=15&bgcolor=ffffff`;
-        const captionRu = `🔗 *Link:* \`${refLink}\`\n🎫 *Promo:* \`${telegramId}\`\n\n✨ Поделитесь этим QR — получайте 1$ бонус за каждого друга!`;
-        const caption = await getLocalizedText(lang, captionRu);
-        try {
-            await ctx.replyWithPhoto(qrUrl, { caption, parse_mode: 'Markdown' });
-        } catch {
-            await ctx.reply(caption, { parse_mode: 'Markdown' });
+    try {
+        const data = JSON.parse(dataStr);
+        
+        // --- Quick Booking from Catalog ---
+        if (data.type === 'quick_book') {
+            const { excursionId, excursionTitle, fullName, phone, tourDate } = data;
+            
+            // Create request in DB
+            await supabase.from('requests').insert([{
+                id: crypto.randomUUID(),
+                user_id: telegramId,
+                excursion_id: excursionId,
+                excursion_title: excursionTitle,
+                full_name: fullName,
+                tour_date: tourDate,
+                phone: phone,
+                price_rub: data.priceRub || 0,
+                status: 'from_webapp',
+                created_at: new Date().toISOString()
+            }]);
+
+            // Notify Managers
+            const reportRu = `🆕 *НОВАЯ ЗАЯВКА ИЗ КАТАЛОГА!*\n\n📍 *Тур:* ${excursionTitle}\n👤 *Клиент:* ${fullName}\n📱 *Телефон:* \`${phone}\`\n🗓️ *Дата:* ${tourDate}\n\n🚀 _Заявка оформлена через Mini App!_`;
+            const report = await getLocalizedText('ru', reportRu); // Managers usually RU
+
+            const { data: managers } = await supabase.from('users').select('telegram_id').in('role', ['founder', 'manager']);
+            if (managers) {
+                for (const m of managers) {
+                    try { await bot.telegram.sendMessage(m.telegram_id, report, { parse_mode: 'Markdown' }); } catch (e) {}
+                }
+            }
+
+            const successRu = '✅ *Заявка отправлена!*\n\nНаш менеджер свяжется с вами в ближайшее время. Спасибо!';
+            const successMsg = await getLocalizedText(lang, successRu);
+            return ctx.reply(successMsg, { parse_mode: 'Markdown' });
+        }
+    } catch (e) {
+        // Fallback for QR keywords if not JSON
+        if (QR_KEYWORDS.some(kw => dataStr.toLowerCase().includes(kw)) || dataStr.includes('QR')) {
+            const botUsername = ctx.botInfo?.username || '';
+            const refLink = `https://t.me/${botUsername}?start=${telegramId}`;
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(refLink)}&margin=15&bgcolor=ffffff`;
+            const captionRu = `🔗 *Link:* \`${refLink}\`\n🎫 *Promo:* \`${telegramId}\`\n\n✨ Поделитесь этим QR — получайте 1$ бонус за каждого друга!`;
+            const caption = await getLocalizedText(lang, captionRu);
+            try {
+                await ctx.replyWithPhoto(qrUrl, { caption, parse_mode: 'Markdown' });
+            } catch {
+                await ctx.reply(caption, { parse_mode: 'Markdown' });
+            }
         }
     }
 });
@@ -497,13 +536,14 @@ bot.on('text', async (ctx) => {
 
     // Helper: send all photos of an excursion as album
     const sendExcursionPhotos = async (ex) => {
-        const photos = (ex.image_urls && Array.isArray(ex.image_urls) && ex.image_urls.length > 0)
-            ? ex.image_urls
+        const photos = (ex.image_urls && Array.isArray(ex.image_urls))
+            ? ex.image_urls.filter(url => url && url.startsWith('http'))
             : (ex.image_url ? [ex.image_url] : []);
 
         if (photos.length === 0) return;
 
         try {
+            console.log(`[PHOTOS] Sending ${photos.length} photos for: ${ex.title}`);
             if (photos.length === 1) {
                 await bot.telegram.sendPhoto(telegramId, photos[0]);
             } else {
@@ -511,49 +551,53 @@ bot.on('text', async (ctx) => {
                 await bot.telegram.sendMediaGroup(telegramId, media);
             }
         } catch (e) {
-            console.warn('[MediaGroup] Error:', e.message);
+            console.warn('[MediaGroup] Error sending photos:', e.message);
         }
     };
 
     if (bookMatch) {
-            const excursionId = bookMatch[1];
-            const selectedEx = excursions ? excursions.find(e => e.id === excursionId) : null;
+        const excursionId = bookMatch[1];
+        const selectedEx = excursions ? excursions.find(e => e.id === excursionId) : null;
 
-            if (selectedEx) {
-                userStates.set(telegramId, { step: 'name', excursionId, data: {} });
+        if (selectedEx) {
+            userStates.set(telegramId, { step: 'name', excursionId, data: {} });
 
-                const currentLang = userLangCache[telegramId] || 'ru';
-                const namePromptRu = `Прекрасный выбор! 😍 Чтобы оформить заявку на экскурсию «${selectedEx.title}», мне нужно уточнить пару деталей.\n\n👤 Как к вам можно обращаться? Напишите, пожалуйста, ваше ФИО.`;
-                const namePrompt = await getLocalizedText(currentLang, namePromptRu);
+            const currentLang = userLangCache[telegramId] || 'ru';
+            const namePromptRu = `Прекрасный выбор! 😍 Чтобы оформить заявку на экскурсию «${selectedEx.title}», мне нужно уточнить пару деталей.\n\n👤 Как к вам можно обращаться? Напишите, пожалуйста, ваше ФИО.`;
+            const namePrompt = await getLocalizedText(currentLang, namePromptRu);
 
-                await saveMessage(telegramId, 'assistant', finalResponse);
+            await saveMessage(telegramId, 'assistant', finalResponse);
 
-                // Send photos album first
-                await sendExcursionPhotos(selectedEx);
+            // Send photos album first
+            await sendExcursionPhotos(selectedEx);
 
-                try {
-                    await ctx.reply(finalResponse, { parse_mode: 'Markdown' });
-                } catch (e) {
-                    await ctx.reply(finalResponse);
-                }
-                return ctx.reply(namePrompt);
+            try {
+                await ctx.reply(finalResponse, { parse_mode: 'Markdown' });
+            } catch (e) {
+                await ctx.reply(finalResponse);
             }
+            return ctx.reply(namePrompt);
         }
+    }
 
-        if (!finalResponse || finalResponse.trim() === '') {
-            finalResponse = 'Пожалуйста, подожди минуту или напиши по-другому.';
-        }
+    if (!finalResponse || finalResponse.trim() === '') {
+        finalResponse = 'Пожалуйста, подожди минуту или напиши по-другому.';
+    }
 
-        // Check if AI response mentions an excursion → cache it and send photos
-        if (excursions) {
-            const mentionedEx = excursions.find(e =>
-                finalResponse.toLowerCase().includes(e.title.toLowerCase())
-            );
-            if (mentionedEx) {
-                lastShownExcursion[telegramId] = mentionedEx.id;
-                await sendExcursionPhotos(mentionedEx);
-            }
+    // Check if AI response mentions an excursion → cache it and send photos
+    if (excursions) {
+        const cleanText = finalResponse.toLowerCase().replace(/[\*\_\`\#]/g, '');
+        const mentionedEx = excursions.find(e => {
+            const title = e.title.toLowerCase();
+            return cleanText.includes(title) || (title.length > 5 && cleanText.includes(title.substring(0, title.length - 2)));
+        });
+        
+        if (mentionedEx) {
+            console.log(`[AI] Mentioned Excursion: ${mentionedEx.title}`);
+            lastShownExcursion[telegramId] = mentionedEx.id;
+            await sendExcursionPhotos(mentionedEx);
         }
+    }
 
         await saveMessage(telegramId, 'assistant', finalResponse);
         try {
