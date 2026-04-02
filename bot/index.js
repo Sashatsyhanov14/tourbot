@@ -231,20 +231,10 @@ bot.command('ref', async (ctx) => {
 });
 
 // --- WEB APP DATA (sendData from mini-app buttons) ---
-bot.on('web_app_data', async (ctx) => {
-    const dataStr = ctx.webAppData?.data || ctx.message?.web_app_data?.data;
-    if (!dataStr) {
-        console.warn('[WEB_APP_DATA_EVENT] Received event but no data found in ctx.webAppData or ctx.message.web_app_data');
-        return;
-    }
-    console.log(`[WEB_APP_DATA_EVENT] Data: ${dataStr}`);
-    await handleWebAppData(ctx, dataStr);
-});
-
 bot.on('message', async (ctx, next) => {
     const dataStr = ctx.message?.web_app_data?.data;
     if (dataStr) {
-        console.log(`[MESSAGE_EVENT_WEBAPP] Data caught in message event: ${dataStr}`);
+        console.log(`[WEB_APP_DATA_RECEIVED] From ${ctx.from?.id}: ${dataStr}`);
         await handleWebAppData(ctx, dataStr);
         return;
     }
@@ -252,23 +242,18 @@ bot.on('message', async (ctx, next) => {
 });
 
 async function handleWebAppData(ctx, dataStr) {
-    const telegramId = ctx.from.id;
+    const telegramId = ctx.from?.id;
     const lang = userLangCache[telegramId] || 'ru';
 
     try {
         let data;
-        if (typeof dataStr === 'object' && dataStr !== null) {
-            data = dataStr;
-        } else {
-            try {
-                data = JSON.parse(dataStr);
-            } catch (jsonErr) {
-                console.error(`[handleWebAppData] JSON Parse Error for: ${dataStr}`, jsonErr.message);
-                // Fallback for QR keywords logic below
-                throw jsonErr; 
-            }
+        try {
+            data = JSON.parse(dataStr);
+        } catch (jsonErr) {
+            console.error(`[handleWebAppData] JSON Parse Error: ${jsonErr.message}`);
+            return;
         }
-        
+
         console.log(`[HANDLE_DATA] Type: ${data.type}`);
         
         // --- Quick Booking from Catalog ---
