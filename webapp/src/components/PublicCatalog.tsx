@@ -8,6 +8,8 @@ interface Excursion {
     description: string;
     price_rub: number;
     duration: string;
+    included?: string;
+    meeting_point?: string;
     image_url: string;
     image_urls: string[];
 }
@@ -17,6 +19,7 @@ export default function PublicCatalog({ t, lang }: { t: any, lang: string }) {
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(true);
     const [bookingEx, setBookingEx] = useState<Excursion | null>(null);
+    const [selectedEx, setSelectedEx] = useState<Excursion | null>(null);
     const [formData, setFormData] = useState({ name: '', phone: '', date: '' });
 
     const tg = window.Telegram?.WebApp;
@@ -83,7 +86,9 @@ export default function PublicCatalog({ t, lang }: { t: any, lang: string }) {
             {/* Grid */}
             <div className="grid grid-cols-1 gap-6">
                 {filtered.map(ex => (
-                    <div key={ex.id} className="bg-[#1a1a1d] rounded-[32px] overflow-hidden border border-white/5 shadow-2xl group active:scale-[0.98] transition-transform">
+                    <div key={ex.id} 
+                         onClick={() => setSelectedEx(ex)}
+                         className="bg-[#1a1a1d] rounded-[32px] overflow-hidden border border-white/5 shadow-2xl group active:scale-[0.98] transition-all cursor-pointer">
                         <div className="relative aspect-[16/10] overflow-hidden">
                             <img 
                                 src={ex.image_url || (ex.image_urls?.[0]) || 'https://images.unsplash.com/photo-1513326738677-b964603b136d?auto=format&fit=crop&q=80&w=800'} 
@@ -118,23 +123,103 @@ export default function PublicCatalog({ t, lang }: { t: any, lang: string }) {
                                     </p>
                                 </div>
                             </div>
-
-                            <button
-                                onClick={() => setBookingEx(ex)}
-                                className="w-full bg-primary text-on-primary py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-[0_8px_25px_rgba(208,188,255,0.2)] active:scale-95 transition-all flex items-center justify-center gap-2"
-                            >
-                                <span className="material-symbols-outlined text-[18px]">shopping_cart_checkout</span>
-                                {lang === 'ru' ? 'Забронировать' : 'Book Now'}
-                            </button>
                         </div>
                     </div>
                 ))}
             </div>
 
-            {/* Booking Modal */}
+            {/* Detail Modal */}
+            {selectedEx && (
+                <div className="fixed inset-0 z-[100] flex flex-col bg-[#0f0f11] animate-in slide-in-from-bottom-6 duration-300 overflow-y-auto">
+                    {/* Hero Image / Gallery */}
+                    <div className="relative w-full aspect-[4/3] bg-black">
+                        <div className="absolute top-4 left-4 z-10">
+                            <button 
+                                onClick={() => setSelectedEx(null)}
+                                className="w-10 h-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/10 active:scale-90 transition-all"
+                            >
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+                        
+                        <div className="flex h-full overflow-x-auto snap-x snap-mandatory hide-scrollbar">
+                           {[selectedEx.image_url, ...(selectedEx.image_urls || [])].filter(Boolean).map((url, i) => (
+                               <div key={i} className="min-w-full h-full snap-center">
+                                   <img src={url} className="w-full h-full object-cover" alt="" />
+                               </div>
+                           ))}
+                        </div>
+                        
+                        <div className="absolute bottom-6 left-6 right-6">
+                            <div className="bg-black/30 backdrop-blur-md px-4 py-1 bottom-4 left-4 rounded-full w-fit border border-white/10">
+                                <p className="text-[10px] font-black text-white uppercase tracking-[0.2em]">{selectedEx.city}</p>
+                            </div>
+                            <h2 className="text-3xl font-black text-white mt-2 leading-tight drop-shadow-lg">{selectedEx.title}</h2>
+                        </div>
+                    </div>
+
+                    <div className="p-6 space-y-8 flex-1">
+                        {/* Stats Row */}
+                        <div className="flex gap-4">
+                            <div className="flex-1 bg-[#1a1a1d] p-4 rounded-2xl border border-white/5 space-y-1">
+                                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">{lang === 'ru' ? 'Стоимость' : 'Price'}</p>
+                                <p className="text-xl font-black text-primary">${selectedEx.price_rub}</p>
+                            </div>
+                            <div className="flex-1 bg-[#1a1a1d] p-4 rounded-2xl border border-white/5 space-y-1">
+                                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">{lang === 'ru' ? 'Длительность' : 'Duration'}</p>
+                                <p className="text-base font-bold text-white">{selectedEx.duration}</p>
+                            </div>
+                        </div>
+
+                        {/* Full Description */}
+                        <div className="space-y-3">
+                            <h4 className="text-lg font-black text-white flex items-center gap-2">
+                                <span className="material-symbols-outlined text-primary">notes</span>
+                                Описание
+                            </h4>
+                            <p className="text-slate-300 leading-relaxed text-sm whitespace-pre-wrap">{selectedEx.description}</p>
+                        </div>
+
+                        {/* Included Section */}
+                        {selectedEx.included && (
+                            <div className="space-y-3">
+                                <h4 className="text-lg font-black text-white flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-primary">check_circle</span>
+                                    Что включено
+                                </h4>
+                                <p className="text-slate-400 text-sm italic border-l-2 border-primary/30 pl-4">{selectedEx.included}</p>
+                            </div>
+                        )}
+
+                        {/* Meeting Point */}
+                        {selectedEx.meeting_point && (
+                            <div className="space-y-3">
+                                <h4 className="text-lg font-black text-white flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-primary">near_me</span>
+                                    Место встречи
+                                </h4>
+                                <p className="text-slate-400 text-sm">{selectedEx.meeting_point}</p>
+                            </div>
+                        )}
+
+                        {/* Floating Booking Button */}
+                        <div className="sticky bottom-0 pt-4 pb-8 bg-gradient-to-t from-[#0f0f11] to-transparent">
+                            <button
+                                onClick={() => setBookingEx(selectedEx)}
+                                className="w-full bg-primary text-on-primary py-5 rounded-3xl font-black uppercase tracking-widest text-sm shadow-[0_12px_30px_rgba(208,188,255,0.3)] active:scale-95 transition-all flex items-center justify-center gap-3"
+                            >
+                                <span className="material-symbols-outlined text-[20px]">shopping_cart_checkout</span>
+                                {lang === 'ru' ? 'Забронировать сейчас' : 'Book Now'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Booking Modal (Order Form) */}
             {bookingEx && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setBookingEx(null)} />
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/90 backdrop-blur-xl" onClick={() => setBookingEx(null)} />
                     <div className="relative w-full max-w-sm bg-[#1a1a1d] rounded-[32px] border border-white/10 p-8 space-y-6 shadow-2xl animate-in zoom-in-95 duration-200">
                         <div className="text-center space-y-2">
                             <h4 className="text-xl font-black text-white">Быстрое бронирование</h4>
