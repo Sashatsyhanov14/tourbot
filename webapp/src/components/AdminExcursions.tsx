@@ -140,7 +140,7 @@ export default function AdminExcursions({ t }: { t: any }) {
                         <div className="w-8 h-8 rounded-xl bg-primary/15 flex items-center justify-center">
                             <span className="material-symbols-outlined text-primary text-[18px]">{isEditing ? 'edit' : 'add_circle'}</span>
                         </div>
-                        <h2 className="text-sm font-bold text-slate-200">{isEditing ? 'Редактирование' : 'Новая экскурсия'}</h2>
+                        <h2 className="text-sm font-bold text-slate-200">{isEditing ? t.editExcursion : t.newExcursion}</h2>
                     </div>
                 </div>
 
