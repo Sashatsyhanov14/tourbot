@@ -429,15 +429,24 @@ async function handleWebAppData(ctx, dataStr) {
         // --- Withdraw Request ---
         if (data.type === 'withdraw_request') {
             const { amount, method } = data;
-            const managerId = process.env.ADMIN_ID || process.env.MANAGER_ID || telegramId; // Fallback if no admin_id set
             
-            const adminNotify = `💰 *ЗАПРОС НА ВЫВОД БОНУСОВ*\n\n👤 Клиент: @${ctx.from.username || 'unknown'} (\`${telegramId}\`)\n💵 Сумма: *${amount} $* \n💳 Реквизиты: \`${method}\` \n\n_Пожалуйста, свяжитесь с клиентом или проведите выплату._`;
+            // 1. Get all managers and founders from the DB
+            const { data: staff } = await supabase.from('users').select('telegram_id').in('role', ['manager', 'founder']);
             
-            try {
-                // Notify the primary management ID from .env
-                await ctx.telegram.sendMessage(managerId, adminNotify, { parse_mode: 'Markdown' });
-            } catch (e) {
-                console.error('[WITHDRAW_NOTIFY_ERROR]', e.message);
+            // 2. Prepare notification list (always include ADMIN_ID from .env just in case)
+            const recipientIds = new Set((staff || []).map(s => s.telegram_id));
+            if (process.env.ADMIN_ID) recipientIds.add(process.env.ADMIN_ID);
+            if (process.env.MANAGER_ID) recipientIds.add(process.env.MANAGER_ID);
+
+            const adminNotify = `💰 *ЗАПРОС НА ВЫВОД БОНУСОВ*\n\n👤 Клиент: @${ctx.from.username || 'unknown'} (\`${telegramId}\`)\n💵 Сумма: *${amount} $* \n💳 Реквизиты: \`${method}\` \n\n_Пожалуйста, проведите выплату и свяжитесь с клиентом._`;
+            
+            // 3. Broadcast to all recipients
+            for (const mId of recipientIds) {
+                try {
+                    await ctx.telegram.sendMessage(mId, adminNotify, { parse_mode: 'Markdown' });
+                } catch (e) {
+                    console.error(`[WITHDRAW_BROADCAST_ERROR] to ${mId}:`, e.message);
+                }
             }
             return;
         }
