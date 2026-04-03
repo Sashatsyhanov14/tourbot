@@ -6,6 +6,10 @@ const EMPTY_FORM = {
     duration: '', included: '', meeting_point: '',
     city_en: '', title_en: '', description_en: '', duration_en: '', included_en: '', meeting_point_en: '',
     city_tr: '', title_tr: '', description_tr: '', duration_tr: '', included_tr: '', meeting_point_tr: '',
+    city_de: '', title_de: '', description_de: '', duration_de: '', included_de: '', meeting_point_de: '',
+    city_pl: '', title_pl: '', description_pl: '', duration_pl: '', included_pl: '', meeting_point_pl: '',
+    city_ar: '', title_ar: '', description_ar: '', duration_ar: '', included_ar: '', meeting_point_ar: '',
+    city_fa: '', title_fa: '', description_fa: '', duration_fa: '', included_fa: '', meeting_point_fa: '',
     image_url: '', image_urls: [] as string[],
     sort_number: 1, is_active: true
 };
@@ -41,7 +45,7 @@ export default function AdminExcursions({ t }: { t: any }) {
     const [formData, setFormData] = useState<any>({ ...EMPTY_FORM });
     const [confirmTarget, setConfirmTarget] = useState<{ id: string; title: string } | null>(null);
     const [photoToRemove, setPhotoToRemove] = useState<number | null>(null);
-    const [activeLang, setActiveLang] = useState<'ru' | 'en' | 'tr'>('ru');
+    const [activeLang, setActiveLang] = useState<'ru' | 'en' | 'tr' | 'de' | 'pl' | 'ar' | 'fa'>('ru');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => { fetchExcursions(); }, []);
@@ -103,7 +107,7 @@ export default function AdminExcursions({ t }: { t: any }) {
             tg?.showAlert('Сначала заполните Название и Описание на Русском!');
             return;
         }
-        tg?.showConfirm('Бот автоматически переведет данные на Английский и Турецкий через ИИ. Продолжить?', (ok: boolean) => {
+        tg?.showConfirm('Бот автоматически переведет данные на все языки (En, Tr, De, Pl, Ar, Fa) через ИИ. Продолжить?', (ok: boolean) => {
             if (ok) {
                 tg.sendData(JSON.stringify({ 
                     type: 'auto_translate_excursion', 
@@ -161,9 +165,9 @@ export default function AdminExcursions({ t }: { t: any }) {
                     </div>
 
                     {/* Language Switcher */}
-                    <div className="flex bg-black/30 p-1 rounded-2xl border border-white/5">
-                        {['ru', 'en', 'tr'].map(l => (
-                            <button key={l} onClick={() => setActiveLang(l as any)} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeLang === l ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-slate-500'}`}>{l}</button>
+                    <div className="flex bg-black/30 p-1 rounded-2xl border border-white/5 overflow-x-auto no-scrollbar">
+                        {['ru', 'en', 'tr', 'de', 'pl', 'ar', 'fa'].map(l => (
+                            <button key={l} onClick={() => setActiveLang(l as any)} className={`flex-shrink-0 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeLang === l ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-slate-500'}`}>{l}</button>
                         ))}
                     </div>
 
@@ -185,13 +189,13 @@ export default function AdminExcursions({ t }: { t: any }) {
                         ) : (
                             <>
                                 <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1"><label className="text-[10px] uppercase text-slate-600 font-bold ml-1">Город ({activeLang})</label><input value={activeLang === 'en' ? formData.city_en : formData.city_tr} onChange={e => setFormData({ ...formData, [activeLang === 'en' ? 'city_en' : 'city_tr']: e.target.value })} className="w-full bg-black/20 border border-white/5 rounded-xl p-3 text-sm focus:border-primary/40 outline-none text-white" /></div>
-                                    <div className="space-y-1"><label className="text-[10px] uppercase text-slate-600 font-bold ml-1">Название ({activeLang})</label><input value={activeLang === 'en' ? formData.title_en : formData.title_tr} onChange={e => setFormData({ ...formData, [activeLang === 'en' ? 'title_en' : 'title_tr']: e.target.value })} className="w-full bg-black/20 border border-white/5 rounded-xl p-3 text-sm focus:border-primary/40 outline-none text-white" /></div>
+                                    <div className="space-y-1"><label className="text-[10px] uppercase text-slate-600 font-bold ml-1">Город ({activeLang})</label><input value={formData[`city_${activeLang}`]} onChange={e => setFormData({ ...formData, [`city_${activeLang}`]: e.target.value })} className="w-full bg-black/20 border border-white/5 rounded-xl p-3 text-sm focus:border-primary/40 outline-none text-white" /></div>
+                                    <div className="space-y-1"><label className="text-[10px] uppercase text-slate-600 font-bold ml-1">Название ({activeLang})</label><input value={formData[`title_${activeLang}`]} onChange={e => setFormData({ ...formData, [`title_${activeLang}`]: e.target.value })} className="w-full bg-black/20 border border-white/5 rounded-xl p-3 text-sm focus:border-primary/40 outline-none text-white" /></div>
                                 </div>
-                                <div className="space-y-1"><label className="text-[10px] uppercase text-slate-600 font-bold ml-1">Описание ({activeLang})</label><textarea rows={3} value={activeLang === 'en' ? formData.description_en : formData.description_tr} onChange={e => setFormData({ ...formData, [activeLang === 'en' ? 'description_en' : 'description_tr']: e.target.value })} className="w-full bg-black/20 border border-white/5 rounded-xl p-3 text-sm focus:border-primary/40 outline-none text-white" /></div>
-                                <div className="space-y-1"><label className="text-[10px] uppercase text-slate-600 font-bold ml-1">Длительность ({activeLang})</label><input value={activeLang === 'en' ? formData.duration_en : formData.duration_tr} onChange={e => setFormData({ ...formData, [activeLang === 'en' ? 'duration_en' : 'duration_tr']: e.target.value })} className="w-full bg-black/20 border border-white/5 rounded-xl p-3 text-sm focus:border-primary/40 outline-none text-white" /></div>
-                                <div className="space-y-1"><label className="text-[10px] uppercase text-slate-600 font-bold ml-1">Что включено ({activeLang})</label><textarea rows={2} value={activeLang === 'en' ? formData.included_en : formData.included_tr} onChange={e => setFormData({ ...formData, [activeLang === 'en' ? 'included_en' : 'included_tr']: e.target.value })} className="w-full bg-black/20 border border-white/5 rounded-xl p-3 text-sm focus:border-primary/40 outline-none text-white" /></div>
-                                <div className="space-y-1"><label className="text-[10px] uppercase text-slate-600 font-bold ml-1">Место встречи ({activeLang})</label><input value={activeLang === 'en' ? formData.meeting_point_en : formData.meeting_point_tr} onChange={e => setFormData({ ...formData, [activeLang === 'en' ? 'meeting_point_en' : 'meeting_point_tr']: e.target.value })} className="w-full bg-black/20 border border-white/5 rounded-xl p-3 text-sm focus:border-primary/40 outline-none text-white" /></div>
+                                <div className="space-y-1"><label className="text-[10px] uppercase text-slate-600 font-bold ml-1">Описание ({activeLang})</label><textarea rows={3} value={formData[`description_${activeLang}`]} onChange={e => setFormData({ ...formData, [`description_${activeLang}`]: e.target.value })} className="w-full bg-black/20 border border-white/5 rounded-xl p-3 text-sm focus:border-primary/40 outline-none text-white" /></div>
+                                <div className="space-y-1"><label className="text-[10px] uppercase text-slate-600 font-bold ml-1">Длительность ({activeLang})</label><input value={formData[`duration_${activeLang}`]} onChange={e => setFormData({ ...formData, [`duration_${activeLang}`]: e.target.value })} className="w-full bg-black/20 border border-white/5 rounded-xl p-3 text-sm focus:border-primary/40 outline-none text-white" /></div>
+                                <div className="space-y-1"><label className="text-[10px] uppercase text-slate-600 font-bold ml-1">Что включено ({activeLang})</label><textarea rows={2} value={formData[`included_${activeLang}`]} onChange={e => setFormData({ ...formData, [`included_${activeLang}`]: e.target.value })} className="w-full bg-black/20 border border-white/5 rounded-xl p-3 text-sm focus:border-primary/40 outline-none text-white" /></div>
+                                <div className="space-y-1"><label className="text-[10px] uppercase text-slate-600 font-bold ml-1">Место встречи ({activeLang})</label><input value={formData[`meeting_point_${activeLang}`]} onChange={e => setFormData({ ...formData, [`meeting_point_${activeLang}`]: e.target.value })} className="w-full bg-black/20 border border-white/5 rounded-xl p-3 text-sm focus:border-primary/40 outline-none text-white" /></div>
                             </>
                         )}
                     </div>

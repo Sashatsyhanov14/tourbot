@@ -1,5 +1,5 @@
 const LOCALIZER_PROMPT = `
-You are a professional Telegram bot translator. You receive a message (in Russian) and a target language (ru, en, tr).
+You are a professional Telegram bot translator. You receive a message (in Russian) and a target language (ru, en, tr, de, pl, ar, fa).
 Your task: translate the text naturally and friendly, preserving meaning, emoji, and formatting (Markdown).
 Rules:
 1. If the target language is Russian (ru), return the original text unchanged.
@@ -22,11 +22,11 @@ Analysis logic:
 4. Client says "next", "more", "show another", "sleduyuschaya", "daha fazla", "baska" -> intent: "catalog_next".
 5. Client selects ONE specific excursion (names it, references it, says "I want this one") -> intent: "sale", set "excursion_id".
 6. Multiple excursions match -> intent: "clarification", ask which one.
-7. Language: "lang_code" = "ru" | "en" | "tr" based on client's text.
+7. Language: "lang_code" = "ru" | "en" | "tr" | "de" | "pl" | "ar" | "fa" based on client's text.
 
 JSON format:
 {
-  "lang_code": "ru | en | tr",
+  "lang_code": "ru | en | tr | de | pl | ar | fa",
   "intent": "consultation | faq | catalog_start | catalog_next | sale | clarification",
   "city": "city name or null",
   "excursion_id": "UUID or null",

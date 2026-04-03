@@ -362,7 +362,7 @@ async function handleWebAppData(ctx, dataStr) {
         // --- AI Auto Translate Excursion ---
         if (data.type === 'auto_translate_excursion') {
             const { excursionId, data: exData } = data;
-            const languages = ['en', 'tr'];
+            const languages = ['en', 'tr', 'de', 'pl', 'ar', 'fa'];
             const fields = ['title', 'city', 'description', 'duration', 'included', 'meeting_point'];
             const updates = {};
 

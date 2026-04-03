@@ -25,6 +25,10 @@ interface Excursion {
     included_tr?: string;
     meeting_point_en?: string;
     meeting_point_tr?: string;
+    city_de?: string; title_de?: string; description_de?: string; duration_de?: string; included_de?: string; meeting_point_de?: string;
+    city_pl?: string; title_pl?: string; description_pl?: string; duration_pl?: string; included_pl?: string; meeting_point_pl?: string;
+    city_ar?: string; title_ar?: string; description_ar?: string; duration_ar?: string; included_ar?: string; meeting_point_ar?: string;
+    city_fa?: string; title_fa?: string; description_fa?: string; duration_fa?: string; included_fa?: string; meeting_point_fa?: string;
 }
 
 export default function PublicCatalog({ t, lang, initialExcursionId }: { t: any, lang: string, initialExcursionId?: string | null }) {
@@ -82,20 +86,20 @@ export default function PublicCatalog({ t, lang, initialExcursionId }: { t: any,
     };
 
     const filtered = excursions.filter(ex => {
-        const title = (lang === 'en' ? ex.title_en : lang === 'tr' ? ex.title_tr : ex.title) || ex.title;
-        const city = (lang === 'en' ? ex.city_en : lang === 'tr' ? ex.city_tr : ex.city) || ex.city;
+        const title = (lang === 'ru' ? ex.title : (ex as any)[`title_${lang}`]) || ex.title;
+        const city = (lang === 'ru' ? ex.city : (ex as any)[`city_${lang}`]) || ex.city;
         return title.toLowerCase().includes(search.toLowerCase()) || city.toLowerCase().includes(search.toLowerCase());
     });
 
     if (loading) return <div className="text-center p-10 animate-pulse text-slate-400">Загрузка каталога...</div>;
 
     const renderExcursion = (ex: Excursion) => {
-        const title = (lang === 'en' ? ex.title_en : lang === 'tr' ? ex.title_tr : ex.title) || ex.title;
-        const city = (lang === 'en' ? ex.city_en : lang === 'tr' ? ex.city_tr : ex.city) || ex.city;
-        const desc = (lang === 'en' ? ex.description_en : lang === 'tr' ? ex.description_tr : ex.description) || ex.description;
-        const duration = (lang === 'en' ? ex.duration_en : lang === 'tr' ? ex.duration_tr : ex.duration) || ex.duration;
-        const included = (lang === 'en' ? ex.included_en : lang === 'tr' ? ex.included_tr : ex.included) || ex.included;
-        const meeting = (lang === 'en' ? ex.meeting_point_en : lang === 'tr' ? ex.meeting_point_tr : ex.meeting_point) || ex.meeting_point;
+        const title = (lang === 'ru' ? ex.title : (ex as any)[`title_${lang}`]) || ex.title;
+        const city = (lang === 'ru' ? ex.city : (ex as any)[`city_${lang}`]) || ex.city;
+        const desc = (lang === 'ru' ? ex.description : (ex as any)[`description_${lang}`]) || ex.description;
+        const duration = (lang === 'ru' ? ex.duration : (ex as any)[`duration_${lang}`]) || ex.duration;
+        const included = (lang === 'ru' ? ex.included : (ex as any)[`included_${lang}`]) || ex.included;
+        const meeting = (lang === 'ru' ? ex.meeting_point : (ex as any)[`meeting_point_${lang}`]) || ex.meeting_point;
 
         return { title, city, desc, duration, included, meeting };
     };
