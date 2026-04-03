@@ -1,12 +1,16 @@
-const { createClient } = require('@supabase/supabase-js');
-const { getLocalizedText } = require('../src/openai');
 const dotenv = require('dotenv');
 const path = require('path');
-
 const envPath = path.resolve(__dirname, '../.env');
 dotenv.config({ path: envPath });
 
-console.log(`[CONFIG] Loading .env from: ${envPath}`);
+const { createClient } = require('@supabase/supabase-js');
+const { getLocalizedText } = require('../src/openai');
+
+console.log(`[CONFIG] Environment loaded from: ${envPath}`);
+if (!process.env.OPENROUTER_API_KEY && !process.env.OPENAI_API_KEY) {
+    console.error('❌ ERROR: OPENROUTER_API_KEY not found in bot/.env');
+    process.exit(1);
+}
 
 const supabase = createClient(
     process.env.SUPABASE_URL || '', 
