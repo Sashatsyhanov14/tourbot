@@ -381,12 +381,49 @@ async function handleWebAppData(ctx, dataStr) {
 
             if (Object.keys(updates).length > 0 && excursionId !== 'new') {
                 const { error } = await supabase.from('excursions').update(updates).eq('id', excursionId);
-                if (error) console.error('[AI_TRANSLATE] Update error:', error.message);
-                else console.log(`[AI_TRANSLATE] Updated excursion ${excursionId} success!`);
+                if (error) {
+                    console.error('[AI_TRANSLATE] Update error:', error.message);
+                    return ctx.reply(`❌ Ошибка сохранения перевода: ${error.message}`);
+                }
+                else console.log(`[AI_TRANSLATE] Updated excursion ${excursionId} success! (Fields: ${Object.keys(updates).length})`);
             }
 
-            const confirmMsg = `✅ *AI Перевод завершен!*\n\nЯ перевел данные на английский и турецкий. `;
+            const confirmMsg = `✅ *AI Перевод завершен!*\n\nЯ подготовил описание на всех языках:\n🇬🇧 English\n🇹🇷 Turkish\n🇩🇪 German\n🇵🇱 Polish\n🇸🇦 Arabic\n🇮🇷 Persian\n\n_Обновите страницу в Mini App, чтобы увидеть результат._`;
             return ctx.reply(confirmMsg, { parse_mode: 'Markdown' });
+        }
+
+        // --- Bulk Translate All ---
+        if (data.type === 'bulk_translate_all') {
+            const { data: excursions } = await supabase.from('excursions').select('*');
+            if (!excursions || excursions.length === 0) return ctx.reply('❌ Экскурсии не найдены.');
+
+            ctx.reply(`🚀 *Начинаю массовый перевод всего каталога (${excursions.length} шт.)...*\nЭто может занять время, я сообщу о результате.`, { parse_mode: 'Markdown' });
+
+            const targetLangs = ['en', 'tr', 'de', 'pl', 'ar', 'fa'];
+            const fields = ['title', 'city', 'description', 'duration', 'included', 'meeting_point'];
+            let updatedCount = 0;
+
+            for (const ex of excursions) {
+                const updates = {};
+                for (const lang of targetLangs) {
+                    for (const field of fields) {
+                        const targetKey = `${field}_${lang}`;
+                        if (!ex[targetKey] && ex[field]) {
+                            const translated = await getLocalizedText(lang, ex[field]);
+                            if (translated && translated !== ex[field]) {
+                                updates[targetKey] = translated;
+                            }
+                        }
+                    }
+                }
+
+                if (Object.keys(updates).length > 0) {
+                    const { error } = await supabase.from('excursions').update(updates).eq('id', ex.id);
+                    if (!error) updatedCount++;
+                }
+            }
+
+            return ctx.reply(`✨ *Массовый перевод завершен!*\n\nОбновлено экскурсий: *${updatedCount}* из *${excursions.length}*.\nВсе языки (En, Tr, De, Pl, Ar, Fa) теперь заполнены!`, { parse_mode: 'Markdown' });
         }
     } catch (e) {
         console.error(`[HANDLE_DATA_FATAL_ERROR] ${e.message}`, e);

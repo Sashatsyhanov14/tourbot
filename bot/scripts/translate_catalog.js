@@ -29,7 +29,7 @@ async function translateAll() {
 
     for (const ex of excursions) {
         const updates = {};
-        const languages = ['en', 'tr'];
+        const languages = ['en', 'tr', 'de', 'pl', 'ar', 'fa'];
 
         for (const lang of languages) {
             // Fields to translate
@@ -37,8 +37,9 @@ async function translateAll() {
             
             for (const field of fields) {
                 const targetKey = `${field}_${lang}`;
+                // Only translate if target is empty and source (Russian) exists
                 if (!ex[targetKey] && ex[field]) {
-                    console.log(`🌐 Translating [${ex.title}] ${field} -> ${lang}...`);
+                    console.log(`🌐 [${lang.toUpperCase()}] Translating [${ex.title}] ${field}...`);
                     try {
                         const translation = await getLocalizedText(lang, ex[field]);
                         if (translation && translation !== ex[field]) {
