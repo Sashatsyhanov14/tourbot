@@ -350,12 +350,14 @@ const AdminStats: React.FC<{ t: any }> = ({ t }) => {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <span className={`text-[10px] font-black px-2 py-1 rounded-full uppercase ${m.role === 'founder' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-primary/20 text-primary'}`}>
-                                        {m.role === 'founder' ? (t.ownerBadge || 'Владелец') : t.roleManager}
-                                    </span>
+                                <div className="flex items-center gap-3">
+                                    {m.role === 'founder' && (
+                                        <span className="text-[9px] font-black px-2 py-1 rounded-lg uppercase bg-yellow-500/10 text-yellow-500 border border-yellow-500/20">
+                                            {t.ownerBadge || 'Владелец'}
+                                        </span>
+                                    )}
                                     {m.role !== 'founder' && (
-                                        <button onClick={() => handleRemoveManager(m.telegram_id)} className="text-red-400/60 hover:text-red-400 transition-colors p-1">
+                                        <button onClick={() => handleRemoveManager(m.telegram_id)} className="w-9 h-9 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all flex items-center justify-center border border-red-500/20">
                                             <span className="material-symbols-outlined text-[18px]">person_remove</span>
                                         </button>
                                     )}
