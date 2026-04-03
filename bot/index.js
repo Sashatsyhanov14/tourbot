@@ -425,6 +425,22 @@ async function handleWebAppData(ctx, dataStr) {
 
             return ctx.reply(`✨ *Массовый перевод завершен!*\n\nОбновлено экскурсий: *${updatedCount}* из *${excursions.length}*.\nВсе языки (En, Tr, De, Pl, Ar, Fa) теперь заполнены!`, { parse_mode: 'Markdown' });
         }
+
+        // --- Withdraw Request ---
+        if (data.type === 'withdraw_request') {
+            const { amount, method } = data;
+            const managerId = process.env.ADMIN_ID || process.env.MANAGER_ID || telegramId; // Fallback if no admin_id set
+            
+            const adminNotify = `💰 *ЗАПРОС НА ВЫВОД БОНУСОВ*\n\n👤 Клиент: @${ctx.from.username || 'unknown'} (\`${telegramId}\`)\n💵 Сумма: *${amount} $* \n💳 Реквизиты: \`${method}\` \n\n_Пожалуйста, свяжитесь с клиентом или проведите выплату._`;
+            
+            try {
+                // Notify the primary management ID from .env
+                await ctx.telegram.sendMessage(managerId, adminNotify, { parse_mode: 'Markdown' });
+            } catch (e) {
+                console.error('[WITHDRAW_NOTIFY_ERROR]', e.message);
+            }
+            return;
+        }
     } catch (e) {
         console.error(`[HANDLE_DATA_FATAL_ERROR] ${e.message}`, e);
         // Fallback for QR keywords if not JSON

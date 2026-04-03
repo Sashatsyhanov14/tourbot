@@ -38,7 +38,17 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, balance,
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        alert(t.alert.replace('{amount}', amount).replace('{method}', method));
+        const tg = (window as any).Telegram?.WebApp;
+        if (tg) {
+            tg.sendData(JSON.stringify({
+                type: 'withdraw_request',
+                amount: parseFloat(amount),
+                method: method
+            }));
+            tg.showAlert(t.alert.replace('{amount}', amount).replace('{method}', method));
+        } else {
+            alert(t.alert.replace('{amount}', amount).replace('{method}', method));
+        }
         onClose();
     };
 

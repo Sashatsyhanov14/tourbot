@@ -8,6 +8,7 @@ const AdminStats: React.FC<{ t: any }> = ({ t }) => {
     const [referralRows, setReferralRows] = useState<any[]>([]);
     const [managers, setManagers] = useState<any[]>([]);
     const [newManagerId, setNewManagerId] = useState('');
+    const [newManagerNote, setNewManagerNote] = useState('');
     const [managerMsg, setManagerMsg] = useState('');
     const [loading, setLoading] = useState(true);
     const [payoutMsg, setPayoutMsg] = useState<{ [id: number]: string }>({});
@@ -124,9 +125,10 @@ const AdminStats: React.FC<{ t: any }> = ({ t }) => {
         const id = parseInt(newManagerId);
         const { data: existing } = await supabase.from('users').select('*').eq('telegram_id', id).single();
         if (!existing) { setManagerMsg(t.managerAddError || '❌ Пользователь не найден.'); return; }
-        await supabase.from('users').update({ role: 'manager' }).eq('telegram_id', id);
+        await supabase.from('users').update({ role: 'manager', note: newManagerNote }).eq('telegram_id', id);
         setManagerMsg((t.managerAddSuccess || '✅ ID {id} теперь Менеджер.').replace('{id}', String(id)));
         setNewManagerId('');
+        setNewManagerNote('');
         fetchManagers();
     };
 
@@ -188,15 +190,18 @@ const AdminStats: React.FC<{ t: any }> = ({ t }) => {
                                         <span className="material-symbols-outlined text-primary text-[18px]">person</span>
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 mb-1">
                                             <p className="text-sm font-bold text-slate-100 truncate">@{ref.username}</p>
                                         </div>
-                                        <input 
-                                            className="text-[10px] text-slate-400 bg-transparent border-none outline-none w-full placeholder:text-slate-700"
-                                            placeholder="Добавить подпись (заметку)..."
-                                            defaultValue={ref.note}
-                                            onBlur={(e) => handleUpdateNote(ref.telegram_id, e.target.value)}
-                                        />
+                                        <div className="relative group">
+                                            <div className="absolute -left-1.5 top-0 bottom-0 w-0.5 bg-primary/40 rounded-full group-focus-within:bg-primary transition-colors" />
+                                            <input 
+                                                className="text-[12px] font-bold text-primary bg-primary/5 hover:bg-primary/10 transition-all border border-primary/20 px-2.5 py-1 rounded-lg w-full placeholder:text-slate-700 outline-none"
+                                                placeholder="Подпись партнёра..."
+                                                defaultValue={ref.note}
+                                                onBlur={(e) => handleUpdateNote(ref.telegram_id, e.target.value)}
+                                            />
+                                        </div>
                                     </div>
                                     <div className="text-right">
                                         <p className="text-lg font-black text-primary">${ref.balance}</p>
@@ -289,17 +294,26 @@ const AdminStats: React.FC<{ t: any }> = ({ t }) => {
                     <span className="material-symbols-outlined text-secondary text-[18px]">manage_accounts</span>
                     {t.manageManagers || 'Управление Менеджерами'}
                 </h3>
-                <div className="flex gap-2">
+                <div className="space-y-3">
+                    <div className="flex gap-2">
+                        <input
+                            type="number"
+                            value={newManagerId}
+                            onChange={e => setNewManagerId(e.target.value)}
+                            placeholder={t.enterTgId || 'Telegram ID менеджера'}
+                            className="flex-1 bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none focus:border-primary/40 transition-all"
+                        />
+                        <button onClick={handleAddManager} className="px-5 py-3 bg-primary/20 text-primary border border-primary/30 rounded-xl text-sm font-bold hover:bg-primary/30 transition-all active:scale-95">
+                            {t.assignEmployee || '+ Добавить'}
+                        </button>
+                    </div>
                     <input
-                        type="number"
-                        value={newManagerId}
-                        onChange={e => setNewManagerId(e.target.value)}
-                        placeholder={t.enterTgId || 'Telegram ID менеджера'}
-                        className="flex-1 bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none focus:border-primary/40 transition-all"
+                        type="text"
+                        value={newManagerNote}
+                        onChange={e => setNewManagerNote(e.target.value)}
+                        placeholder="Заметка к новому менеджеру (подпись)..."
+                        className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none focus:border-secondary/40 transition-all"
                     />
-                    <button onClick={handleAddManager} className="px-5 py-3 bg-primary/20 text-primary border border-primary/30 rounded-xl text-sm font-bold hover:bg-primary/30 transition-all active:scale-95">
-                        {t.assignEmployee || '+ Добавить'}
-                    </button>
                 </div>
                 {managerMsg && <p className="text-xs text-primary/80 bg-primary/10 border border-primary/20 p-3 rounded-xl">{managerMsg}</p>}
                 {managers.length > 0 && (
@@ -308,13 +322,16 @@ const AdminStats: React.FC<{ t: any }> = ({ t }) => {
                         {managers.map(m => (
                             <div key={m.telegram_id} className="flex items-center justify-between bg-black/20 p-3 rounded-xl border border-white/5">
                                 <div>
-                                    <p className="text-sm font-bold text-slate-200">@{m.username || '—'}</p>
-                                    <input 
-                                        className="text-[10px] text-slate-400 bg-transparent border-none outline-none w-full placeholder:text-slate-700"
-                                        placeholder="Добавить подпись менеджера..."
-                                        defaultValue={m.note}
-                                        onBlur={(e) => handleUpdateNote(m.telegram_id, e.target.value)}
-                                    />
+                                    <p className="text-sm font-bold text-slate-200 mb-1">@{m.username || '—'}</p>
+                                    <div className="relative group">
+                                        <div className="absolute -left-1.5 top-0 bottom-0 w-0.5 bg-secondary/40 rounded-full group-focus-within:bg-secondary transition-colors" />
+                                        <input 
+                                            className="text-[12px] font-bold text-secondary bg-secondary/5 hover:bg-secondary/10 transition-all border border-secondary/20 px-2.5 py-1 rounded-lg w-full placeholder:text-slate-700 outline-none"
+                                            placeholder="Подпись менеджера..."
+                                            defaultValue={m.note}
+                                            onBlur={(e) => handleUpdateNote(m.telegram_id, e.target.value)}
+                                        />
+                                    </div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className={`text-[10px] font-black px-2 py-1 rounded-full uppercase ${m.role === 'founder' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-primary/20 text-primary'}`}>
