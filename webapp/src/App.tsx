@@ -502,13 +502,18 @@ if (loading) return (
           }`}>
             {user.role === 'founder' ? (t.ownerBadge || 'Owner') : user.role === 'manager' ? t.roleManager : t.roleUser}
           </span>
-          <div className="flex gap-1 bg-[#1a1a1d] p-1 rounded-full border border-white/5 overflow-x-auto max-w-[120px] no-scrollbar">
-            {(['ru', 'en', 'tr', 'de', 'pl', 'ar', 'fa'] as const).map(l => (
-              <button key={l} onClick={() => setLang(l)} className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase transition-all ${
-                lang === l ? 'bg-primary text-black' : 'text-slate-500 hover:text-slate-300'
-              }`}>{l}</button>
-            ))}
-          </div>
+          <button 
+            onClick={() => {
+              const supported = ['ru', 'en', 'tr', 'de', 'pl', 'ar', 'fa'] as const;
+              const idx = supported.indexOf(lang);
+              const next = supported[(idx + 1) % supported.length];
+              setLang(next);
+            }}
+            className="flex items-center gap-2 bg-[#1a1a1d] px-3 py-1.5 rounded-full border border-white/10 active:scale-95 transition-all shadow-lg"
+          >
+            <span className="material-symbols-outlined text-primary text-[16px]">language</span>
+            <span className="text-[10px] font-black text-white uppercase tracking-wider">{lang}</span>
+          </button>
         </div>
       </header>
 
