@@ -53,42 +53,48 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, balance,
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="w-full max-w-sm bg-white dark:bg-[#1a191d] border border-white/5 rounded-t-2xl sm:rounded-2xl p-6 shadow-[0_30px_60px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom duration-300 text-on-surface">
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-bold font-headline">{t.title}</h2>
-                    <button onClick={onClose} className="p-1 rounded-full hover:bg-surface-container-highest transition-colors flex items-center justify-center">
-                        <span className="material-symbols-outlined text-on-surface-variant">close</span>
+        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-4 bg-black/80 backdrop-blur-md">
+            <div className="w-full max-w-sm bg-[#1a191d] border border-white/10 rounded-t-[32px] sm:rounded-[32px] p-8 shadow-[0_40px_100px_rgba(0,0,0,0.8)] animate-in slide-in-from-bottom duration-500">
+                <div className="flex justify-between items-center mb-8">
+                    <h2 className="text-2xl font-black text-white tracking-tight">{t.title}</h2>
+                    <button onClick={onClose} className="w-10 h-10 rounded-2xl bg-white/5 hover:bg-white/10 transition-all flex items-center justify-center border border-white/10">
+                        <span className="material-symbols-outlined text-slate-400">close</span>
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4 font-body">
-                    <div className="space-y-1">
-                        <label className="text-sm text-on-surface-variant font-bold uppercase tracking-wide">{t.amountLabel.replace('{balance}', String(balance))}</label>
-                        <input
-                            type="number"
-                            required
-                            max={balance}
-                            value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
-                            className="w-full p-3 flex-1 bg-surface-container-lowest border border-outline-variant/20 rounded-lg text-sm text-on-surface focus:outline-none focus:border-primary/50"
-                            placeholder={t.amountPlaceholder}
-                        />
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="space-y-2">
+                        <label className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] ml-1">{t.amountLabel.replace('{balance}', String(balance))}</label>
+                        <div className="relative">
+                            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-primary/60 text-[20px]">payments</span>
+                            <input
+                                type="number"
+                                required
+                                max={balance}
+                                value={amount}
+                                onChange={(e) => setAmount(e.target.value)}
+                                className="w-full pl-12 pr-4 py-4 bg-black/40 border border-white/10 rounded-2xl text-base font-bold text-white focus:outline-none focus:border-primary/50 transition-all placeholder:text-slate-700"
+                                placeholder={t.amountPlaceholder}
+                            />
+                        </div>
                     </div>
 
-                    <div className="space-y-1">
-                        <label className="text-sm text-on-surface-variant font-bold uppercase tracking-wide">{t.methodLabel}</label>
-                        <input
-                            type="text"
-                            required
-                            value={method}
-                            onChange={(e) => setMethod(e.target.value)}
-                            className="w-full p-3 flex-1 bg-surface-container-lowest border border-outline-variant/20 rounded-lg text-sm text-on-surface focus:outline-none focus:border-primary/50"
-                            placeholder={t.methodPlaceholder}
-                        />
+                    <div className="space-y-2">
+                        <label className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] ml-1">{t.methodLabel}</label>
+                        <div className="relative">
+                            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-[20px]">account_balance_wallet</span>
+                            <input
+                                type="text"
+                                required
+                                value={method}
+                                onChange={(e) => setMethod(e.target.value)}
+                                className="w-full pl-12 pr-4 py-4 bg-black/40 border border-white/10 rounded-2xl text-base font-bold text-white focus:outline-none focus:border-primary/50 transition-all placeholder:text-slate-700"
+                                placeholder={t.methodPlaceholder}
+                            />
+                        </div>
                     </div>
 
-                    <button type="submit" className="w-full py-4 text-sm uppercase tracking-widest font-bold bg-primary/20 text-primary border border-primary/30 rounded-xl shadow-[0_0_15px_rgba(208,188,255,0.1)] hover:bg-primary/30 active:scale-95 transition-all">
+                    <button type="submit" className="w-full py-5 text-xs uppercase tracking-[0.3em] font-black bg-primary text-black rounded-2xl shadow-[0_20px_40px_rgba(208,188,255,0.2)] hover:brightness-110 active:scale-[0.98] transition-all mt-4">
                         {t.submit}
                     </button>
                 </form>
