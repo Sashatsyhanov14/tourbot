@@ -45,7 +45,7 @@ const AdminStats: React.FC<{ t: any }> = ({ t }) => {
         // 3. Fetch referrer profiles
         const { data: referrers } = await supabase
             .from('users')
-            .select('telegram_id, username, balance')
+            .select('telegram_id, username, balance, note')
             .in('telegram_id', referrerIds);
 
         if (!referrers) return;
@@ -87,6 +87,7 @@ const AdminStats: React.FC<{ t: any }> = ({ t }) => {
                 requestCount: myReqs.length,
                 revenue,
                 totalPaid,
+                note: ref.note || '',
                 payouts: myPayouts,
                 requests: myReqs  // full request objects
             };
@@ -96,7 +97,7 @@ const AdminStats: React.FC<{ t: any }> = ({ t }) => {
     };
 
     const fetchManagers = async () => {
-        const { data } = await supabase.from('users').select('telegram_id, username, role').in('role', ['manager', 'founder']);
+        const { data } = await supabase.from('users').select('telegram_id, username, role, note').in('role', ['manager', 'founder']);
         setManagers(data || []);
     };
 
@@ -127,6 +128,11 @@ const AdminStats: React.FC<{ t: any }> = ({ t }) => {
         setManagerMsg((t.managerAddSuccess || '✅ ID {id} теперь Менеджер.').replace('{id}', String(id)));
         setNewManagerId('');
         fetchManagers();
+    };
+
+    const handleUpdateNote = async (tgId: number, newNote: string) => {
+        await supabase.from('users').update({ note: newNote }).eq('telegram_id', tgId);
+        fetchAll();
     };
 
     const handleRemoveManager = async (id: number) => {
@@ -182,8 +188,15 @@ const AdminStats: React.FC<{ t: any }> = ({ t }) => {
                                         <span className="material-symbols-outlined text-primary text-[18px]">person</span>
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-bold text-slate-100 truncate">@{ref.username}</p>
-                                        <p className="text-[10px] text-slate-500 font-mono">{ref.telegram_id}</p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-sm font-bold text-slate-100 truncate">@{ref.username}</p>
+                                        </div>
+                                        <input 
+                                            className="text-[10px] text-slate-400 bg-transparent border-none outline-none w-full placeholder:text-slate-700"
+                                            placeholder="Добавить подпись (заметку)..."
+                                            defaultValue={ref.note}
+                                            onBlur={(e) => handleUpdateNote(ref.telegram_id, e.target.value)}
+                                        />
                                     </div>
                                     <div className="text-right">
                                         <p className="text-lg font-black text-primary">${ref.balance}</p>
@@ -296,7 +309,12 @@ const AdminStats: React.FC<{ t: any }> = ({ t }) => {
                             <div key={m.telegram_id} className="flex items-center justify-between bg-black/20 p-3 rounded-xl border border-white/5">
                                 <div>
                                     <p className="text-sm font-bold text-slate-200">@{m.username || '—'}</p>
-                                    <p className="text-[10px] text-slate-500 font-mono">{m.telegram_id}</p>
+                                    <input 
+                                        className="text-[10px] text-slate-400 bg-transparent border-none outline-none w-full placeholder:text-slate-700"
+                                        placeholder="Добавить подпись менеджера..."
+                                        defaultValue={m.note}
+                                        onBlur={(e) => handleUpdateNote(m.telegram_id, e.target.value)}
+                                    />
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className={`text-[10px] font-black px-2 py-1 rounded-full uppercase ${m.role === 'founder' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-primary/20 text-primary'}`}>

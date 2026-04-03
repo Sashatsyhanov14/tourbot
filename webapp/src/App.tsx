@@ -184,6 +184,7 @@ const App: React.FC = () => {
   const [referralStats, setReferralStats] = useState({ invited: 0, requests: 0, earned: 0 });
   const [referralDetails, setReferralDetails] = useState<any[]>([]);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
+  const [isLangOpen, setIsLangOpen] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
   const tg = window.Telegram?.WebApp;
@@ -502,18 +503,36 @@ if (loading) return (
           }`}>
             {user.role === 'founder' ? (t.ownerBadge || 'Owner') : user.role === 'manager' ? t.roleManager : t.roleUser}
           </span>
-          <button 
-            onClick={() => {
-              const supported = ['ru', 'en', 'tr', 'de', 'pl', 'ar', 'fa'] as const;
-              const idx = supported.indexOf(lang);
-              const next = supported[(idx + 1) % supported.length];
-              setLang(next);
-            }}
-            className="flex items-center gap-2 bg-[#1a1a1d] px-3 py-1.5 rounded-full border border-white/10 active:scale-95 transition-all shadow-lg"
-          >
-            <span className="material-symbols-outlined text-primary text-[16px]">language</span>
-            <span className="text-[10px] font-black text-white uppercase tracking-wider">{lang}</span>
-          </button>
+          <div className="relative">
+            <button 
+              onClick={() => setIsLangOpen(!isLangOpen)}
+              className="flex items-center gap-2 bg-[#1a1a1d] px-3 py-1.5 rounded-full border border-white/10 active:scale-95 transition-all shadow-lg"
+            >
+              <span className="material-symbols-outlined text-primary text-[16px]">language</span>
+              <span className="text-[10px] font-black text-white uppercase tracking-wider">{lang}</span>
+              <span className={`material-symbols-outlined text-[14px] text-slate-500 transition-transform ${isLangOpen ? 'rotate-180' : ''}`}>expand_more</span>
+            </button>
+
+            {isLangOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setIsLangOpen(false)} />
+                <div className="absolute right-0 mt-2 w-28 bg-[#1a1a1d] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                  {(['ru', 'en', 'tr', 'de', 'pl', 'ar', 'fa'] as const).map((l) => (
+                    <button
+                      key={l}
+                      onClick={() => { setLang(l); setIsLangOpen(false); }}
+                      className={`w-full px-4 py-2.5 text-left text-[10px] font-black uppercase tracking-widest transition-colors flex items-center justify-between ${
+                        lang === l ? 'bg-primary/10 text-primary' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      {l}
+                      {lang === l && <span className="material-symbols-outlined text-[14px]">check</span>}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
