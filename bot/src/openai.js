@@ -80,7 +80,11 @@ module.exports = {
             return finalMessage + '\n' + embeddedTags;
 
         } catch (error) {
-            console.error('[OpenAI Error]:', error);
+            console.error('[OpenAI Error Details]:', error.message);
+            if (error.response) {
+                console.error('[OpenAI Status]:', error.response.status);
+                console.error('[OpenAI Data]:', error.response.data);
+            }
             return 'Извини, произошла ошибка. Попробуй чуть позже. 🙏';
         }
     },

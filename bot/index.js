@@ -766,9 +766,13 @@ bot.on('text', async (ctx) => {
         await ctx.reply(finalResponse);
     }
 
-    } catch (err) {
-        console.error('CRITICAL AI CHAT ERROR:', err);
-        try { await ctx.reply('Извини, произошла ошибка. Попробуй позже. 🙏'); } catch (e) { }
+    } catch (error) {
+        console.error('[OpenAI Fatal Error]:', error.message);
+        if (error.response) {
+            console.error('[OpenAI Status]:', error.response.status);
+            console.error('[OpenAI Data]:', error.response.data);
+        }
+        try { await ctx.reply('Извини, произошла ошибка. Попробуй чуть позже. 🙏'); } catch (e) { }
     }
 });
 
