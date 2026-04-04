@@ -7,7 +7,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const openai = new OpenAI({
     baseURL: 'https://openrouter.ai/api/v1',
-    apiKey: process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY,
+    apiKey: (process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY || '').trim(),
     defaultHeaders: {
         'HTTP-Referer': 'https://excursion-bot.com',
         'X-Title': 'Excursion Bot',
