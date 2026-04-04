@@ -1,8 +1,9 @@
 const OpenAI = require('openai');
 const dotenv = require('dotenv');
+const path = require('path');
 const { ANALYZER_PROMPT, WRITER_PROMPT, LOCALIZER_PROMPT, MANAGER_ALERTER_PROMPT } = require('./prompts');
 
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const openai = new OpenAI({
     baseURL: 'https://openrouter.ai/api/v1',
