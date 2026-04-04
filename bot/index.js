@@ -722,49 +722,58 @@ bot.on('text', async (ctx) => {
 
         const aiResponse = await getChatResponse(excursions, faqText, history, userText);
 
-        const langMatch = aiResponse.match(/\[LANG:\s*(ru|tr|en)\]/i);
-        if (langMatch) userLangCache[telegramId] = langMatch[1].toLowerCase();
+        // --- LANGUAGE SYNC ---
+        const langMatch = aiResponse.match(/\[LANG:\s*([a-z]{2})\]/i);
+        if (langMatch) {
+            const newLang = langMatch[1].toLowerCase();
+            if (userLangCache[telegramId] !== newLang) {
+                userLangCache[telegramId] = newLang;
+                await supabase.from('users').update({ language_code: newLang }).eq('telegram_id', telegramId).catch(() => {});
+            }
+        }
 
         const bookMatch = aiResponse.match(/\[BOOK_REQUEST:\s*([a-zA-Z0-9_-]+)\]/i);
         let finalResponse = aiResponse.replace(/\[BOOK_REQUEST:.*?\]/gi, '').replace(/\[LANG:.*?\]/gi, '').trim();
 
+        if (bookMatch) {
+            const excursionId = bookMatch[1].trim();
+            const selectedEx = (excursions || []).find(e => e.id === excursionId);
 
-
-    if (bookMatch) {
-        const excursionId = bookMatch[1].trim();
-        const selectedEx = excursions ? excursions.find(e => e.id === excursionId) : null;
-
-        if (selectedEx) {
-            // "Silent Start" - входим в стейт без лишних кнопок, т.к. AI уже спросил имя
-            userStates.set(telegramId, { step: 'name', excursionId, data: {} });
-            
-            await saveMessage(telegramId, 'assistant', finalResponse);
-            await sendExcursionPhotos(telegramId, selectedEx);
-            
-            try { return await ctx.reply(finalResponse, { parse_mode: 'Markdown' }); } catch (e) { return ctx.reply(finalResponse); }
+            if (selectedEx) {
+                userStates.set(telegramId, { step: 'name', excursionId, data: {} });
+                await saveMessage(telegramId, 'assistant', finalResponse);
+                await sendExcursionPhotos(telegramId, selectedEx);
+                try { return await ctx.reply(finalResponse, { parse_mode: 'Markdown' }); } catch (e) { return ctx.reply(finalResponse); }
+            }
         }
-    }
 
-    if (!finalResponse || finalResponse.trim() === '') {
-        finalResponse = 'Извините, я задумался. Повторите, пожалуйста, ваш вопрос.';
-    }
-
-    // Mentioned excursion check (to show photos even if not booking)
-    if (excursions) {
-        const cleanText = finalResponse.toLowerCase();
-        const mentionedEx = excursions.find(ex => cleanText.includes(ex.title.toLowerCase()));
-        if (mentionedEx) {
-            lastShownExcursion[telegramId] = mentionedEx.id;
-            await sendExcursionPhotos(telegramId, mentionedEx);
+        if (!finalResponse || finalResponse.trim() === '') {
+            finalResponse = 'Извините, я задумался. Повторите, пожалуйста, ваш вопрос.';
         }
-    }
 
-    await saveMessage(telegramId, 'assistant', finalResponse);
-    try {
-        await ctx.reply(finalResponse, { parse_mode: 'Markdown' });
-    } catch (err) {
-        await ctx.reply(finalResponse);
-    }
+        // --- SMART PHOTO DETECTION ---
+        const PHOTO_KEYWORDS = ['фото', 'photo', 'resim', 'fotoğraf', 'покажи', 'картинк', 'picture', 'image'];
+        const isPhotoRequest = PHOTO_KEYWORDS.some(kw => userText.toLowerCase().includes(kw));
+        
+        if (excursions) {
+            const cleanText = finalResponse.toLowerCase();
+            const mentionedEx = excursions.find(ex => cleanText.includes(ex.title.toLowerCase()) || (ex.city && cleanText.includes(ex.city.toLowerCase())));
+            
+            if (mentionedEx && (isPhotoRequest || analysis?.intent === 'sale')) {
+                lastShownExcursion[telegramId] = mentionedEx.id;
+                await sendExcursionPhotos(telegramId, mentionedEx);
+            } else if (isPhotoRequest && lastShownExcursion[telegramId]) {
+                const cachedEx = excursions.find(e => e.id === lastShownExcursion[telegramId]);
+                if (cachedEx) await sendExcursionPhotos(telegramId, cachedEx);
+            }
+        }
+
+        await saveMessage(telegramId, 'assistant', finalResponse);
+        try {
+            await ctx.reply(finalResponse, { parse_mode: 'Markdown' });
+        } catch (err) {
+            await ctx.reply(finalResponse);
+        }
 
     } catch (error) {
         console.error('[OpenAI Fatal Error]:', error.message);
@@ -772,7 +781,12 @@ bot.on('text', async (ctx) => {
             console.error('[OpenAI Status]:', error.response.status);
             console.error('[OpenAI Data]:', error.response.data);
         }
-        try { await ctx.reply('Извини, произошла ошибка. Попробуй чуть позже. 🙏'); } catch (e) { }
+        try { 
+            const lang = userLangCache[telegramId] || 'ru';
+            const errMsgRu = 'Извини, произошла ошибка. Попробуй чуть позже. 🙏';
+            const errMsg = await getLocalizedText(lang, errMsgRu);
+            await ctx.reply(errMsg); 
+        } catch (e) { }
     }
 });
 

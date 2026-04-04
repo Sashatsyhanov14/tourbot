@@ -1,3 +1,4 @@
+const axios = require('axios');
 const OpenAI = require('openai');
 const dotenv = require('dotenv');
 const path = require('path');
@@ -8,6 +9,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 const openai = new OpenAI({
     baseURL: 'https://openrouter.ai/api/v1',
     apiKey: (process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY || '').trim(),
+    timeout: 60000,
     defaultHeaders: {
         'HTTP-Referer': 'https://excursion-bot.com',
         'X-Title': 'Excursion Bot',
@@ -17,7 +19,7 @@ const openai = new OpenAI({
 module.exports = {
     async getChatResponse(excursions, faqText, history, userMessage) {
         try {
-            // === АГЕНТ 1: АНАЛИТИК (Analyzer) ===
+            // === AGENT 1: THE ANALYZER (Analyst) ===
             const analyzerMessages = [
                 { role: 'system', content: ANALYZER_PROMPT(excursions) },
                 ...history,
@@ -31,21 +33,21 @@ module.exports = {
             });
 
             const rawJsonStr = analyzerResponse.choices[0].message.content;
+            console.log("Analyzer Output:", rawJsonStr);
+
             let analysis;
             try {
                 const cleanJsonStr = rawJsonStr.replace(/```json/g, '').replace(/```/g, '').trim();
                 analysis = JSON.parse(cleanJsonStr);
             } catch (e) {
-                analysis = { lang_code: 'ru', intent: 'consultation', excursion_id: null, writer_instruction: 'Ответь кратко на запрос.' };
+                console.error("JSON Parse Error:", e);
+                analysis = { lang_code: "ru", intent: "consultation", writer_instruction: "Ответь вежливо и уточни, что именно интересует клиента." };
             }
 
-            // === АГЕНТ 2: ПИСАТЕЛЬ (Writer) — Всегда на RU ===
+            // === AGENT 2: THE WRITER (Manager) ===
             const writerMessages = [
                 { role: 'system', content: WRITER_PROMPT(excursions, faqText) },
-                {
-                    role: 'user',
-                    content: `Инструкции от Аналитика:\nНамерение клиента: ${analysis.intent}\nЧто сказать клиенту:\n${analysis.writer_instruction}`
-                }
+                { role: 'user', content: `Инструкции Аналитика:\nЯзык: ${analysis.lang_code}\nНамерение: ${analysis.intent}\nИнструкция: ${analysis.writer_instruction}` }
             ];
 
             const writerResponse = await openai.chat.completions.create({
@@ -56,23 +58,14 @@ module.exports = {
 
             const russianMessage = writerResponse.choices[0].message.content;
 
-            // === АГЕНТ 3: ПЕРЕВОДЧИК (Translator) ===
-            // Переводим только если язык не русский
+            // === AGENT 3: THE TRANSLATOR (Localizer) ===
             let finalMessage = russianMessage;
-            if (analysis.lang_code !== 'ru') {
-                const translatorResponse = await openai.chat.completions.create({
-                    model: 'openai/gpt-4o-mini',
-                    messages: [
-                        { role: 'system', content: LOCALIZER_PROMPT },
-                        { role: 'user', content: `Целевой язык: ${analysis.lang_code}\nТекст:\n${russianMessage}` }
-                    ],
-                    temperature: 0.2
-                });
-                finalMessage = translatorResponse.choices[0].message.content.trim();
+            if (analysis.lang_code && analysis.lang_code !== 'ru') {
+                finalMessage = await this.getLocalizedText(analysis.lang_code, russianMessage);
             }
 
-            // Прикрепляем теги для парсера в index.js
-            let embeddedTags = `[LANG:${analysis.lang_code}]`;
+            // Embedded tags for index.js
+            let embeddedTags = `[LANG:${analysis.lang_code || 'ru'}]`;
             if (analysis.intent === 'sale' && analysis.excursion_id) {
                 embeddedTags += `\n[BOOK_REQUEST: ${analysis.excursion_id}]`;
             }
@@ -80,7 +73,7 @@ module.exports = {
             return finalMessage + '\n' + embeddedTags;
 
         } catch (error) {
-            console.error('[OpenAI Error Details]:', error.message);
+            console.error('[OpenAI Fatal Error]:', error.message);
             if (error.response) {
                 console.error('[OpenAI Status]:', error.response.status);
                 console.error('[OpenAI Data]:', error.response.data);
@@ -89,20 +82,18 @@ module.exports = {
         }
     },
 
-    // === АГЕНТ 4: МЕНЕДЖЕР-АНАЛИТИК (Manager Alerter) ===
+    // === AGENT 4: THE MANAGER ALERTER ===
     async getManagerReport(userData, history, excursion, bookingDetails) {
         try {
             const context = `
-Данные клиента: @${userData.username || 'unknown'} (ID: ${userData.telegram_id})
-История переписки (последние 5 сообщений):
-${history.slice(-5).map(h => `${h.role === 'user' ? 'Клиент' : 'Бот'}: ${h.content}`).join('\n')}
-
-Выбранная экскурсия: ${excursion ? excursion.title : 'Не выбрана'}
-Собранные данные для брони:
+Клиент: @${userData.username || 'unknown'} (ID: ${userData.telegram_id})
+История: ${history.slice(-5).map(h => `${h.role === 'user' ? 'Клиент' : 'Бот'}: ${h.content}`).join('\n')}
+Экскурсия: ${excursion ? excursion.title : 'Не выбрана'}
+Данные:
 - ФИО: ${bookingDetails.fullName || '—'}
 - Дата: ${bookingDetails.tourDate || '—'}
-- Отель/Адрес: ${bookingDetails.hotelName || '—'}
-- Телефон (WhatsApp): ${bookingDetails.phone || '—'}
+- Место: ${bookingDetails.hotelName || '—'}
+- WhatsApp: ${bookingDetails.phone || '—'}
 `;
 
             const response = await openai.chat.completions.create({
@@ -116,26 +107,45 @@ ${history.slice(-5).map(h => `${h.role === 'user' ? 'Клиент' : 'Бот'}: 
 
             return response.choices[0].message.content;
         } catch (e) {
-            console.error('[Manager Alerter Error]:', e.message);
-            // Фолбэк на стандартное сообщение, если AI упал
-            return `🚀 **НОВАЯ ЗАЯВКА!**\n\n📈 ${excursion?.title}\n👤 Клиент: @${userData.username}\n📝 ФИО: ${bookingDetails.fullName}\n📅 Дата: ${bookingDetails.tourDate}\n🏨 Отель: ${bookingDetails.hotelName}\n📞 WhatsApp: ${bookingDetails.phone || 'не указан'}`;
+            return `🚀 **НОВАЯ ЗАЯВКА!**\n\n📈 ${excursion?.title}\n👤 Клиент: @${userData.username}\n📞 WhatsApp: ${bookingDetails.phone}`;
         }
     },
 
-    async getLocalizedText(langCode, russianText) {
+    async getLocalizedText(langCode, russianText, retries = 1) {
         if (!langCode || langCode === 'ru') return russianText;
-        try {
-            const response = await openai.chat.completions.create({
+
+        // Try OpenAI Localizer first
+        const attempt = async () => {
+            const res = await openai.chat.completions.create({
                 model: 'openai/gpt-4o-mini',
                 messages: [
                     { role: 'system', content: LOCALIZER_PROMPT },
-                    { role: 'user', content: `Целевой язык: ${langCode}\nТекст:\n${russianText}` }
+                    { role: 'user', content: `Target Language: ${langCode}\nText:\n${russianText}` }
                 ],
                 temperature: 0.2,
+                max_tokens: 1000
             });
-            return response.choices[0].message.content.trim();
-        } catch (e) {
-            return russianText;
+            return res.choices[0].message.content.trim();
+        };
+
+        for (let i = 0; i <= retries; i++) {
+            try {
+                return await attempt();
+            } catch (e) {
+                console.warn(`[Localizer] AI attempt ${i+1} failed: ${e.message}`);
+                if (i === retries) {
+                    // FINAL FALLBACK: MyMemory (Free API)
+                    try {
+                        console.log(`[Localizer] Falling back to MyMemory for ${langCode}`);
+                        const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(russianText.slice(0, 500))}&langpair=ru|${langCode}`;
+                        const res = await axios.get(url, { timeout: 5000 });
+                        return res.data?.responseData?.translatedText || russianText;
+                    } catch (err) {
+                        return russianText;
+                    }
+                }
+            }
         }
+        return russianText;
     }
 };
