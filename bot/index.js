@@ -757,15 +757,31 @@ bot.on('text', async (ctx) => {
         
         if (excursions) {
             const cleanText = finalResponse.toLowerCase();
-            const mentionedEx = excursions.find(ex => cleanText.includes(ex.title.toLowerCase()) || (ex.city && cleanText.includes(ex.city.toLowerCase())));
-            
-            // Check if it's a photo request OR if AI is currently trying to sell (bookMatch)
-            if (mentionedEx && (isPhotoRequest || bookMatch)) {
-                lastShownExcursion[telegramId] = mentionedEx.id;
-                await sendExcursionPhotos(telegramId, mentionedEx);
-            } else if (isPhotoRequest && lastShownExcursion[telegramId]) {
-                const cachedEx = excursions.find(e => e.id === lastShownExcursion[telegramId]);
-                if (cachedEx) await sendExcursionPhotos(telegramId, cachedEx);
+            let targetEx = null;
+
+            // 1. Priority: If AI explicitly identified the excursion (bookMatch)
+            if (bookMatch) {
+                const exId = bookMatch[1].trim();
+                targetEx = excursions.find(e => e.id === exId);
+            }
+
+            // 2. Fallback: Smart matching by title or city in AI response
+            if (!targetEx) {
+                targetEx = excursions.find(ex => 
+                    cleanText.includes(ex.title.toLowerCase()) || 
+                    (ex.city && cleanText.includes(ex.city.toLowerCase()))
+                );
+            }
+
+            // 3. Last Resort: Use last shown excursion if just "show photos" was asked
+            if (!targetEx && isPhotoRequest && lastShownExcursion[telegramId]) {
+                targetEx = excursions.find(e => e.id === lastShownExcursion[telegramId]);
+            }
+
+            // Execution: Send if we found an excursion AND it's either a photo request OR a booking start
+            if (targetEx && (isPhotoRequest || bookMatch)) {
+                lastShownExcursion[telegramId] = targetEx.id;
+                await sendExcursionPhotos(telegramId, targetEx);
             }
         }
 
