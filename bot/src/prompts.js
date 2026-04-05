@@ -51,7 +51,7 @@ Rules:
    "📍 City | ⏱️ Duration | 💰 $Price"
    "📝 Short description (1-2 sentences)"
    [blank line]
-   "Interested? I can book it through a smart form! Or show the next one? ➡️"
+   "Интересует? Могу оформить бронь прямо здесь! Или показать следующую? ➡️"
    
    NEVER dump the full list at once!
    Use ONLY real data from this database:

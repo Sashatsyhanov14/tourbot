@@ -66,7 +66,7 @@ module.exports = {
 
             // Embedded tags for index.js
             let embeddedTags = `[LANG:${analysis.lang_code || 'ru'}]`;
-            if (analysis.intent === 'sale' && analysis.excursion_id) {
+            if (analysis.excursion_id) {
                 embeddedTags += `\n[BOOK_REQUEST: ${analysis.excursion_id}]`;
             }
 
