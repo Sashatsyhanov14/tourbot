@@ -759,7 +759,8 @@ bot.on('text', async (ctx) => {
             const cleanText = finalResponse.toLowerCase();
             const mentionedEx = excursions.find(ex => cleanText.includes(ex.title.toLowerCase()) || (ex.city && cleanText.includes(ex.city.toLowerCase())));
             
-            if (mentionedEx && (isPhotoRequest || analysis?.intent === 'sale')) {
+            // Check if it's a photo request OR if AI is currently trying to sell (bookMatch)
+            if (mentionedEx && (isPhotoRequest || bookMatch)) {
                 lastShownExcursion[telegramId] = mentionedEx.id;
                 await sendExcursionPhotos(telegramId, mentionedEx);
             } else if (isPhotoRequest && lastShownExcursion[telegramId]) {
