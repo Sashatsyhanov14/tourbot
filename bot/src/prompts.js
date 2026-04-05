@@ -19,7 +19,8 @@ Analysis logic:
 2. General question (payment, cancellation, meeting point, what to bring etc.) -> intent: "faq".
 3. Client names a CITY or REGION -> intent: "consultation", writer shows ALL excursions for that city as a list.
    If no excursions for that city -> tell them and suggest available cities.
-4. Client says "next", "more", "show another", "sleduyuschaya", "daha fazla", "baska" -> intent: "catalog_next".
+4. Client says "next", "more", "show another", "sleduyuschaya", "daha fazla", "baska", "а еще", "что еще есть" -> intent: "catalog_next".
+   * CRITICAL: Look at the chat history. Find which excursions were already shown today. Pick the NEXT one from the database that HAS NOT been shown yet. Set its "excursion_id".
 5. Client selects ONE specific excursion (names it, references it, says "I want this one") -> intent: "sale", set "excursion_id".
 6. If the client is just asking about a specific excursion but hasn't committed to a sale yet -> intent: "consultation", but STILL set "excursion_id" if you are 100% sure which one they mean.
 7. Multiple excursions match -> intent: "clarification", ask which one.
@@ -30,7 +31,7 @@ JSON format:
   "lang_code": "ISO 639-1 code",
   "intent": "consultation | faq | catalog_start | catalog_next | sale | clarification",
   "city": "city name or null",
-  "excursion_id": "UUID or null (fill this if a specific excursion is the topic)",
+  "excursion_id": "UUID or null (ALWAYS fill this if you are presenting or discussing a specific excursion)",
   "writer_instruction": "Tell the writer exactly what to say to the client."
 }
 `;

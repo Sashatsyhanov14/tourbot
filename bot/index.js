@@ -763,6 +763,7 @@ bot.on('text', async (ctx) => {
             if (bookMatch) {
                 const exId = bookMatch[1].trim();
                 targetEx = excursions.find(e => e.id === exId);
+                console.log(`[PHOTO_DEBUG] ID Match Found: ${exId} -> ${targetEx?.title || 'Not Found'}`);
             }
 
             // 2. Fallback: Smart matching by title or city in AI response
@@ -771,17 +772,22 @@ bot.on('text', async (ctx) => {
                     cleanText.includes(ex.title.toLowerCase()) || 
                     (ex.city && cleanText.includes(ex.city.toLowerCase()))
                 );
+                if (targetEx) console.log(`[PHOTO_DEBUG] Text Match Found: ${targetEx.title}`);
             }
 
             // 3. Last Resort: Use last shown excursion if just "show photos" was asked
             if (!targetEx && isPhotoRequest && lastShownExcursion[telegramId]) {
                 targetEx = excursions.find(e => e.id === lastShownExcursion[telegramId]);
+                if (targetEx) console.log(`[PHOTO_DEBUG] Cache Match Found: ${targetEx.title}`);
             }
 
             // Execution: Send if we found an excursion AND it's either a photo request OR a booking start
             if (targetEx && (isPhotoRequest || bookMatch)) {
+                console.log(`[PHOTO_DEBUG] Triggering send for ${targetEx.title}. isPhotoRequest: ${isPhotoRequest}, bookMatch: ${!!bookMatch}`);
                 lastShownExcursion[telegramId] = targetEx.id;
                 await sendExcursionPhotos(telegramId, targetEx);
+            } else {
+                console.log(`[PHOTO_DEBUG] No trigger. targetEx: ${targetEx?.title || 'None'}, isPhotoRequest: ${isPhotoRequest}, bookMatch: ${!!bookMatch}`);
             }
         }
 
