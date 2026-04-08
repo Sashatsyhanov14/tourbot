@@ -39,7 +39,7 @@ bot.action(/^accept_req_(.+)$/, async (ctx) => {
     const managerId = ctx.from.id;
 
     const { data: manager } = await getUser(managerId);
-    if (!manager || (manager.role !== 'founder' && manager.role !== 'manager')) {
+    if (!manager || (manager.role !== 'founder' && manager.role !== 'manager' && manager.role !== 'admin')) {
         return ctx.answerCbQuery('❌ У вас нет прав.', { show_alert: true });
     }
 
@@ -92,7 +92,7 @@ bot.action(/^bonus_req_(.+)$/, async (ctx) => {
     const managerId = ctx.from.id;
 
     const { data: manager } = await getUser(managerId);
-    if (!manager || (manager.role !== 'founder' && manager.role !== 'manager')) {
+    if (!manager || (manager.role !== 'founder' && manager.role !== 'manager' && manager.role !== 'admin')) {
         return ctx.answerCbQuery('❌ Нет прав.', { show_alert: true });
     }
 
@@ -102,11 +102,22 @@ bot.action(/^bonus_req_(.+)$/, async (ctx) => {
     try {
         // Начисление 1% рефереру покупателя
         const { data: buyer } = await supabase.from('users').select('referrer_id').eq('telegram_id', request.user_id).single();
-        if (buyer?.referrer_id && request.price_rub) {
-            const reward = Math.round(request.price_rub * 0.01);
+        const price = request.price_usd || (request.price_rub ? request.price_rub / 100 : 0);
+        
+        if (buyer?.referrer_id && (request.price_usd || request.price_rub)) {
+            const rewardPercentage = 0.01; // 1% for tours
+            const reward = Math.round((price * rewardPercentage) * 100) / 100;
             const { data: refUser } = await supabase.from('users').select('balance').eq('telegram_id', buyer.referrer_id).single();
-            const newBalance = Math.round(((refUser?.balance || 0) + reward));
+            const newBalance = Math.round(((refUser?.balance || 0) + reward) * 100) / 100;
             await supabase.from('users').update({ balance: newBalance }).eq('telegram_id', buyer.referrer_id);
+            
+            // Log commission for WebApp analytics
+            await supabase.from('chat_history').insert({
+                user_id: buyer.referrer_id,
+                role: 'assistant',
+                content: `COMMISSION_RECORD:${reward}:request_${requestId}:buyer_${request.user_id}`,
+                created_at: new Date().toISOString()
+            }).catch(e => console.error('Commission log error:', e.message));
 
             try {
                 const refLang = userLangCache[buyer.referrer_id] || 'ru';
@@ -193,6 +204,14 @@ bot.start(async (ctx) => {
                 balance: 0
             });
             user = newUser;
+        } else if (startPayload && !isNaN(startPayload) && !user.referrer_id) {
+            // Existing user without a referrer came via a referral link — assign now
+            const rId = parseInt(startPayload);
+            if (rId !== telegramId) {
+                await supabase.from('users').update({ referrer_id: rId }).eq('telegram_id', telegramId);
+                user.referrer_id = rId;
+                console.log(`[START] Assigned referrer ${rId} to existing user ${telegramId}`);
+            }
         }
 
         const lang = ctx.from.language_code || 'ru';
@@ -305,7 +324,7 @@ async function handleWebAppData(ctx, dataStr) {
                 full_name: fullName,
                 tour_date: tourDate,
                 phone: phone,
-                price_rub: priceRub || data.priceRub || 0,
+                price_usd: priceRub || data.price_usd || 0,
                 status: 'from_webapp',
                 created_at: new Date().toISOString()
             }]);
@@ -316,10 +335,10 @@ async function handleWebAppData(ctx, dataStr) {
             }
 
             // Notify Managers
-            const reportRu = `🆕 *НОВАЯ ЗАЯВКА ИЗ КАТАЛОГА!*\n\n📍 *Тур:* ${excursionTitle}\n👤 *Клиент:* ${fullName}\n📱 *Телефон:* \`${phone}\`\n🗓️ *Дата:* ${tourDate}\n\n🚀 _Заявка оформлена через Mini App!_`;
+            const reportRu = `👤 *Клиент:* @${ctx.from.username || 'unknown'} (\`${telegramId}\`)\n🆕 *НОВАЯ ЗАЯВКА ИЗ КАТАЛОГА!*\n\n📍 *Тур:* ${excursionTitle}\n👤 *ФИО:* ${fullName}\n📱 *Телефон:* \`${phone}\`\n🗓️ *Дата:* ${tourDate}\n\n🚀 _Заявка оформлена через Mini App!_`;
             const report = await getLocalizedText('ru', reportRu);
 
-            const { data: managers } = await supabase.from('users').select('telegram_id').in('role', ['founder', 'manager']);
+            const { data: managers } = await supabase.from('users').select('telegram_id').in('role', ['founder', 'admin', 'manager']);
             if (managers && managers.length > 0) {
                 for (const m of managers) {
                     try { 
@@ -432,14 +451,14 @@ async function handleWebAppData(ctx, dataStr) {
             const { amount, method } = data;
             
             // 1. Get all managers and founders from the DB
-            const { data: staff } = await supabase.from('users').select('telegram_id').in('role', ['manager', 'founder']);
+            const { data: staff } = await supabase.from('users').select('telegram_id').in('role', ['manager', 'admin', 'founder']);
             
             // 2. Prepare notification list (always include ADMIN_ID from .env just in case)
             const recipientIds = new Set((staff || []).map(s => s.telegram_id));
             if (process.env.ADMIN_ID) recipientIds.add(process.env.ADMIN_ID);
             if (process.env.MANAGER_ID) recipientIds.add(process.env.MANAGER_ID);
 
-            const adminNotify = `💰 *ЗАПРОС НА ВЫВОД БОНУСОВ*\n\n👤 Клиент: @${ctx.from.username || 'unknown'} (\`${telegramId}\`)\n💵 Сумма: *${amount} $* \n💳 Реквизиты: \`${method}\` \n\n_Пожалуйста, проведите выплату и свяжитесь с клиентом._`;
+            const adminNotify = `👤 *Клиент:* @${ctx.from.username || 'unknown'} (\`${telegramId}\`)\n💰 *ЗАПРОС НА ВЫВОД БОНУСОВ*\n\n💵 Сумма: *${amount} $* \n💳 Реквизиты: \`${method}\` \n\n_Пожалуйста, проведите выплату и свяжитесь с клиентом._`;
             
             // 3. Broadcast to all recipients
             for (const mId of recipientIds) {
@@ -632,11 +651,12 @@ bot.on('text', async (ctx) => {
             await ctx.reply(thanksMsg);
 
             // Уведомление менеджерам
-            const { data: managers } = await supabase.from('users').select('telegram_id').in('role', ['founder', 'manager']);
+            const { data: managers } = await supabase.from('users').select('telegram_id').in('role', ['founder', 'admin', 'manager']);
             if (managers) {
                 for (const m of managers) {
                     try {
-                        await bot.telegram.sendMessage(m.telegram_id, aiReport, {
+                        const meta = `👤 *Клиент:* @${user.username || 'unknown'} (\`${telegramId}\`)\n`;
+                        await bot.telegram.sendMessage(m.telegram_id, meta + aiReport, {
                             parse_mode: 'Markdown',
                             ...Markup.inlineKeyboard([
                                 [

@@ -93,6 +93,52 @@ export default function PublicCatalog({ t, lang, initialExcursionId }: { t: any,
 
     if (loading) return <div className="text-center p-10 animate-pulse text-slate-400">Загрузка каталога...</div>;
 
+    const getFlagData = (countryName: string) => {
+        if (!countryName) return { emoji: '🏳️', code: '' };
+        const c = countryName.toLowerCase();
+        if (c.includes('turk') || c.includes('турц') || c.includes('türkiye') || c.includes('alanya') || c.includes('istanbul')) return { emoji: '🇹🇷', code: 'tr' };
+        if (c.includes('europ') || c.includes('европ') || c.includes('avrupa')) return { emoji: '🇪🇺', code: 'eu' };
+        if (c.includes('usa') || c.includes('сша') || c.includes('abd')) return { emoji: '🇺🇸', code: 'us' };
+        if (c.includes('thai') || c.includes('таил')) return { emoji: '🇹🇭', code: 'th' };
+        if (c.includes('viet') || c.includes('вьет')) return { emoji: '🇻🇳', code: 'vn' };
+        if (c.includes('isra') || c.includes('изра') || c.includes('israil')) return { emoji: '🇮🇱', code: 'il' };
+        if (c.includes('emir') || c.includes('оаэ') || c.includes('bae') || c.includes('dubai') || c.includes('uae')) return { emoji: '🇦🇪', code: 'ae' };
+        if (c.includes('egypt') || c.includes('егип') || c.includes('mısır')) return { emoji: '🇪🇬', code: 'eg' };
+        if (c.includes('georg') || c.includes('груз')) return { emoji: '🇬🇪', code: 'ge' };
+        if (c.includes('armen') || c.includes('армен')) return { emoji: '🇦🇲', code: 'am' };
+        if (c.includes('kazak') || c.includes('казак')) return { emoji: '🇰🇿', code: 'kz' };
+        if (c.includes('azer') || c.includes('азер')) return { emoji: '🇦🇿', code: 'az' };
+        if (c.includes('uzbek') || c.includes('узбек')) return { emoji: '🇺🇿', code: 'uz' };
+        if (c.includes('ru') || c.includes('rus') || c.includes('рф') || c.includes('russia') || c.includes('россия')) return { emoji: '🇷🇺', code: 'ru' };
+        if (c.includes('saudi') || c.includes('сауд')) return { emoji: '🇸🇦', code: 'sa' };
+        if (c.includes('chin') || c.includes('кит')) return { emoji: '🇨🇳', code: 'cn' };
+        if (c.includes('ukraine') || c.includes('украин')) return { emoji: '🇺🇦', code: 'ua' };
+        if (c.includes('middle east') || c.includes('восток') || c.includes('орта доғу')) return { emoji: '🏜️', code: 'un' };
+        if (c.includes('asia') || c.includes('азия')) return { emoji: '🌏', code: 'un' };
+        if (c.includes('africa') || c.includes('африка')) return { emoji: '🌍', code: 'un' };
+        if (c.includes('latin') || c.includes('латин')) return { emoji: '🌎', code: 'un' };
+        return { emoji: '📍', code: '' };
+    };
+
+    const FlagIcon = ({ country }: { country: string }) => {
+        const data = getFlagData(country);
+        const flagCode = data.code || 'un'; // Fallback to UN for real flag look
+        return (
+            <img 
+                src={`https://flagcdn.com/w40/${flagCode}.png`} 
+                alt={country}
+                className="w-5 h-3.5 object-cover rounded-[2px] shadow-sm border border-white/10"
+                onError={(e) => {
+                    (e.target as any).style.display = 'none';
+                    const span = document.createElement('span');
+                    span.innerText = data.emoji;
+                    span.className = "text-sm";
+                    (e.target as any).parentNode.appendChild(span);
+                }}
+            />
+        );
+    };
+
     const renderExcursion = (ex: Excursion) => {
         const title = (lang === 'ru' ? ex.title : (ex as any)[`title_${lang}`]) || ex.title;
         const city = (lang === 'ru' ? ex.city : (ex as any)[`city_${lang}`]) || ex.city;
@@ -134,9 +180,9 @@ export default function PublicCatalog({ t, lang, initialExcursionId }: { t: any,
                                     alt={info.title} 
                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                                 />
-                                <div className="absolute top-4 left-4 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
-                                    <p className="text-[10px] font-black text-white uppercase tracking-wider flex items-center gap-1">
-                                        <span className="material-symbols-outlined text-[14px] text-primary">location_on</span>
+                                <div className="absolute top-4 left-4 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-2 shadow-lg">
+                                    <FlagIcon country={info.city} />
+                                    <p className="text-[10px] font-black text-white uppercase tracking-wider">
                                         {info.city}
                                     </p>
                                 </div>
@@ -193,7 +239,8 @@ export default function PublicCatalog({ t, lang, initialExcursionId }: { t: any,
                             </div>
                             
                             <div className="absolute bottom-6 left-6 right-6 text-left">
-                                <div className="bg-black/30 backdrop-blur-md px-4 py-1 bottom-4 left-4 rounded-full w-fit border border-white/10">
+                                <div className="bg-black/30 backdrop-blur-md px-4 py-1.5 bottom-4 left-4 rounded-full w-fit border border-white/10 flex items-center gap-2 shadow-lg">
+                                    <FlagIcon country={info.city} />
                                     <p className="text-[10px] font-black text-white uppercase tracking-[0.2em]">{info.city}</p>
                                 </div>
                                 <h2 className="text-3xl font-black text-white mt-2 leading-tight drop-shadow-lg">{info.title}</h2>

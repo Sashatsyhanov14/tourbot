@@ -220,7 +220,8 @@ const App: React.FC = () => {
 
       if (currentUser) {
         setUser(currentUser);
-        if (currentUser.role === 'founder' || currentUser.role === 'manager') {
+        const isStaff = currentUser.role === 'founder' || currentUser.role === 'manager' || currentUser.role === 'admin';
+        if (isStaff) {
           setActiveTab('stats');
         }
         // Fetch invited users with their request counts
@@ -346,7 +347,9 @@ if (loading) return (
     );
   }
 
-  const isOwner = user.role === 'founder' || user.role === 'manager';
+  const isAdmin = user.role === 'founder' || user.role === 'admin';
+  const isManager = user.role === 'manager';
+  const isStaff = isAdmin || isManager;
   const refLink = `https://t.me/Emedeotour_bot?start=${user.telegram_id}`;
 
   const renderContent = () => {
@@ -471,7 +474,7 @@ if (loading) return (
             </div>
           </div>
         );
-      case 'stats': return <AdminStats t={t} />;
+      case 'stats': return <AdminStats t={t} isAdmin={isAdmin} user={user} />;
       case 'excursions': return <AdminExcursions t={t} />;
       case 'requests': return <AdminRequests t={t} />;
       case 'faq': return <AdminFaq t={t} />;
@@ -498,10 +501,11 @@ if (loading) return (
         <div className="flex items-center gap-2">
           <span className={`text-[9px] font-black px-2 py-1 rounded-full uppercase ${
             user.role === 'founder' ? 'bg-yellow-500/20 text-yellow-400' :
-            user.role === 'manager' ? 'bg-primary/20 text-primary' :
+            user.role === 'admin' ? 'bg-primary/20 text-primary' :
+            user.role === 'manager' ? 'bg-secondary/20 text-secondary' :
             'bg-white/5 text-slate-500'
           }`}>
-            {user.role === 'founder' ? (t.ownerBadge || 'Owner') : user.role === 'manager' ? t.roleManager : t.roleUser}
+            {user.role === 'founder' ? (t.ownerBadge || 'Owner') : user.role === 'admin' ? 'Admin' : user.role === 'manager' ? t.roleManager : t.roleUser}
           </span>
           <div className="relative">
             <button 
@@ -521,11 +525,16 @@ if (loading) return (
                     <button
                       key={l}
                       onClick={() => { setLang(l); setIsLangOpen(false); }}
-                      className={`w-full px-4 py-2.5 text-left text-[10px] font-black uppercase tracking-widest transition-colors flex items-center justify-between ${
-                        lang === l ? 'bg-primary/10 text-primary' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                      className={`w-full px-4 py-3 text-left text-[11px] font-black uppercase tracking-widest transition-colors flex items-center justify-between border-l-4 ${
+                        lang === l ? 'bg-primary/10 text-primary border-primary' : 'text-slate-400 border-transparent hover:bg-white/5 hover:text-white'
                       }`}
                     >
-                      {l}
+                      <div className="flex items-center gap-2">
+                        <span className="text-base leading-none">
+                          {l === 'ru' ? '🇷🇺' : l === 'en' ? '🇺🇸' : l === 'tr' ? '🇹🇷' : l === 'de' ? '🇩🇪' : l === 'pl' ? '🇵🇱' : l === 'ar' ? '🇦🇪' : '🇮🇷'}
+                        </span>
+                        <span>{l}</span>
+                      </div>
                       {lang === l && <span className="material-symbols-outlined text-[14px]">check</span>}
                     </button>
                   ))}
@@ -560,7 +569,7 @@ if (loading) return (
           <span className="text-[8px] font-black uppercase tracking-wider mt-0.5">{t.tabCatalog}</span>
         </button>
 
-        {isOwner && (
+        {isStaff && (
           <>
             <button
               onClick={() => setActiveTab('stats')}
