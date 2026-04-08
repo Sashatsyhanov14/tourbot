@@ -32,16 +32,17 @@ module.exports = {
                 temperature: 0.1
             });
 
-            const rawJsonStr = analyzerResponse.choices[0].message.content;
+            const rawJsonStr = analyzerResponse.choices?.[0]?.message?.content || '';
             console.log("Analyzer Output:", rawJsonStr);
 
-            let analysis;
-            try {
-                const cleanJsonStr = rawJsonStr.replace(/```json/g, '').replace(/```/g, '').trim();
-                analysis = JSON.parse(cleanJsonStr);
-            } catch (e) {
-                console.error("JSON Parse Error:", e);
-                analysis = { lang_code: "ru", intent: "consultation", writer_instruction: "Ответь вежливо и уточни, что именно интересует клиента." };
+            let analysis = { lang_code: 'ru', intent: 'consultation', excursion_id: null, writer_instruction: 'Уточни, что интересует клиента.' };
+            if (rawJsonStr) {
+                try {
+                    const cleanJsonStr = rawJsonStr.replace(/```json/g, '').replace(/```/g, '').trim();
+                    analysis = JSON.parse(cleanJsonStr);
+                } catch (e) {
+                    console.error("JSON Parse Error:", e.message, "Raw:", rawJsonStr.slice(0, 200));
+                }
             }
 
             // === AGENT 2: THE WRITER (Manager) ===
