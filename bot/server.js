@@ -62,9 +62,9 @@ app.listen(PORT, () => {
             .then(() => console.log(`Webhook set to: ${WEBHOOK_URL}/api/webhook`))
             .catch(err => console.error('Error setting webhook:', err));
     } else {
-        bot.launch()
+        bot.launch({ dropPendingUpdates: true })
             .then(() => console.log('Bot started with Long Polling'))
-            .catch(err => console.error('Error launching bot:', err));
+            .catch(err => console.error('Error launching bot:', err.message || err));
     }
 });
 
