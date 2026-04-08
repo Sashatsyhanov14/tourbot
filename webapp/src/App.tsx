@@ -581,15 +581,6 @@ if (loading) return (
               <span className="text-[8px] font-black uppercase tracking-wider mt-0.5">{t.tabStats}</span>
             </button>
             <button
-              onClick={() => setActiveTab('excursions')}
-              className={`flex flex-col items-center px-3 py-2 rounded-2xl transition-all ${
-                activeTab === 'excursions' ? 'text-primary bg-primary/10' : 'text-slate-500 hover:text-slate-300'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: activeTab === 'excursions' ? "'FILL' 1" : "'FILL' 0" }}>map</span>
-              <span className="text-[8px] font-black uppercase tracking-wider mt-0.5">{t.tabExcursions}</span>
-            </button>
-            <button
               onClick={() => setActiveTab('requests')}
               className={`flex flex-col items-center px-3 py-2 rounded-2xl transition-all ${
                 activeTab === 'requests' ? 'text-primary bg-primary/10' : 'text-slate-500 hover:text-slate-300'
@@ -598,15 +589,28 @@ if (loading) return (
               <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: activeTab === 'requests' ? "'FILL' 1" : "'FILL' 0" }}>list_alt</span>
               <span className="text-[8px] font-black uppercase tracking-wider mt-0.5">{t.tabRequests}</span>
             </button>
-            <button
-              onClick={() => setActiveTab('faq')}
-              className={`flex flex-col items-center px-3 py-2 rounded-2xl transition-all ${
-                activeTab === 'faq' ? 'text-primary bg-primary/10' : 'text-slate-500 hover:text-slate-300'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: activeTab === 'faq' ? "'FILL' 1" : "'FILL' 0" }}>help</span>
-              <span className="text-[8px] font-black uppercase tracking-wider mt-0.5">{t.tabFaq}</span>
-            </button>
+            {isAdmin && (
+              <>
+                <button
+                  onClick={() => setActiveTab('excursions')}
+                  className={`flex flex-col items-center px-3 py-2 rounded-2xl transition-all ${
+                    activeTab === 'excursions' ? 'text-primary bg-primary/10' : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: activeTab === 'excursions' ? "'FILL' 1" : "'FILL' 0" }}>map</span>
+                  <span className="text-[8px] font-black uppercase tracking-wider mt-0.5">{t.tabExcursions}</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('faq')}
+                  className={`flex flex-col items-center px-3 py-2 rounded-2xl transition-all ${
+                    activeTab === 'faq' ? 'text-primary bg-primary/10' : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: activeTab === 'faq' ? "'FILL' 1" : "'FILL' 0" }}>help</span>
+                  <span className="text-[8px] font-black uppercase tracking-wider mt-0.5">{t.tabFaq}</span>
+                </button>
+              </>
+            )}
           </>
         )}
       </nav>

@@ -89,7 +89,7 @@ module.exports = {
     return { data, error };
   },
 
-  async createRequest(userId, excursionId, excursionTitle, fullName, tourDate, hotelName, priceUsd, phone) {
+  async createRequest(userId, excursionId, excursionTitle, fullName, tourDate, hotelName, priceUsd, phone, referrerId = null) {
     const reqId = crypto.randomUUID();
     const { data, error } = await supabase
       .from('requests')
@@ -103,6 +103,7 @@ module.exports = {
         hotel_name: hotelName,
         price_usd: priceUsd,
         phone: phone || null,
+        referrer_id: referrerId,
         status: 'new',
         created_at: new Date().toISOString()
       }])

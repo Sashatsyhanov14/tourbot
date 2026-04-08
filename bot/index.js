@@ -100,34 +100,34 @@ bot.action(/^bonus_req_(.+)$/, async (ctx) => {
     if (!request) return ctx.answerCbQuery('❌ Заявка не найдена.', { show_alert: true });
 
     try {
-        // Начисление 1% рефереру покупателя
-        const { data: buyer } = await supabase.from('users').select('referrer_id').eq('telegram_id', request.user_id).single();
+        // Use referrer_id stored directly on the request at booking time
+        const referrerId = request.referrer_id;
         const price = request.price_usd || (request.price_rub ? request.price_rub / 100 : 0);
         
-        if (buyer?.referrer_id && (request.price_usd || request.price_rub)) {
+        if (referrerId && (request.price_usd || request.price_rub)) {
             const rewardPercentage = 0.01; // 1% for tours
             const reward = Math.round((price * rewardPercentage) * 100) / 100;
-            const { data: refUser } = await supabase.from('users').select('balance').eq('telegram_id', buyer.referrer_id).single();
+            const { data: refUser } = await supabase.from('users').select('balance').eq('telegram_id', referrerId).single();
             const newBalance = Math.round(((refUser?.balance || 0) + reward) * 100) / 100;
-            await supabase.from('users').update({ balance: newBalance }).eq('telegram_id', buyer.referrer_id);
+            await supabase.from('users').update({ balance: newBalance }).eq('telegram_id', referrerId);
             
             // Log commission for WebApp analytics
             await supabase.from('chat_history').insert({
-                user_id: buyer.referrer_id,
+                user_id: referrerId,
                 role: 'assistant',
                 content: `COMMISSION_RECORD:${reward}:request_${requestId}:buyer_${request.user_id}`,
                 created_at: new Date().toISOString()
             }).catch(e => console.error('Commission log error:', e.message));
 
             try {
-                const refLang = userLangCache[buyer.referrer_id] || 'ru';
+                const refLang = userLangCache[referrerId] || 'ru';
                 const refRu = `💰 Вам начислено $${reward} (1% от заявки на экскурсию «${request.excursion_title}»)! Ваш баланс: $${newBalance}`;
                 const refMsg = await getLocalizedText(refLang, refRu);
-                await bot.telegram.sendMessage(buyer.referrer_id, refMsg);
+                await bot.telegram.sendMessage(referrerId, refMsg);
             } catch (e) { }
 
             await ctx.editMessageText(
-                ctx.callbackQuery.message.text + `\n\n💰 БОНУС $${reward} начислен рефереру (ID: ${buyer.referrer_id})`,
+                ctx.callbackQuery.message.text + `\n\n💰 БОНУС $${reward} начислен рефереру (ID: ${referrerId})`,
                 Markup.inlineKeyboard([])
             );
             await ctx.answerCbQuery(`✅ Бонус $${reward} успешно начислен!`, { show_alert: true });
@@ -629,6 +629,8 @@ bot.on('text', async (ctx) => {
             const { data: excursions } = await getExcursions();
             const selectedEx = excursions ? excursions.find(e => e.id === excursionId) : null;
 
+            const { data: user } = await getUser(telegramId);
+
             const { data: order } = await createRequest(
                 telegramId,
                 excursionId,
@@ -637,10 +639,10 @@ bot.on('text', async (ctx) => {
                 state.data.tourDate,
                 state.data.hotelName,
                 selectedEx ? selectedEx.price_rub : 0,
-                state.data.phone
+                state.data.phone,
+                user?.referrer_id || null
             );
 
-            const { data: user } = await getUser(telegramId);
             const { data: history } = await getHistory(telegramId, 10);
             const aiReport = await getManagerReport(user, history, selectedEx, state.data);
 
@@ -649,6 +651,17 @@ bot.on('text', async (ctx) => {
             const thanksRu = `✅ Спасибо! Заявка отправлена. Наш оператор свяжется с вами по номеру ${userText} в ближайшее время. 🙌`;
             const thanksMsg = await getLocalizedText(lang, thanksRu);
             await ctx.reply(thanksMsg);
+
+            // --- 2-minute follow-up upsell ---
+            setTimeout(async () => {
+                try {
+                    const followUpRu = `Спасибо за ваш интерес и уделённое время! 🙏\nЖелаем вам приятного путешествия! ✈️\n\nВаша заявка уже у нас — оператор подтвердит все детали в ближайшее время. Экскурсия пройдёт незабываемо! 🗺️\n\nРекомендуем установить приложение eMedeo — цифровая платформа с прозрачными ценами, отзывами и поддержкой 24/7 🤖\n\nИИ от eMedeo поможет вам:\n• Оформить трансфер 🚗\n• Арендовать автомобиль или жильё 🏡\n• Купить eSIM для интернета 📱\n• Совершить покупки 🛍️\n• Получить юридические и консультационные услуги ⚖️\n\n— Мир без посредников —\n\nМы всегда на связи — чат поддержки 24/7 💬\n\nНаше приложение:\nAndroid: https://play.google.com/store/apps/details?id=com.emedeo.codeware\niOS: https://apps.apple.com/app/emedeo/id6738978452`;
+                    const followUpMsg = await getLocalizedText(lang, followUpRu);
+                    await bot.telegram.sendMessage(telegramId, followUpMsg, { disable_web_page_preview: true });
+                } catch (e) {
+                    console.error('[FOLLOWUP] Error sending follow-up:', e.message);
+                }
+            }, 2 * 60 * 1000); // 2 minutes
 
             // Уведомление менеджерам
             const { data: managers } = await supabase.from('users').select('telegram_id').in('role', ['founder', 'admin', 'manager']);
