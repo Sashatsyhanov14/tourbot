@@ -15,7 +15,7 @@ Excursion database:
 ${excursions.map((e, i) => `${i + 1}. [${e.city}] ${e.title} | ${e.duration} | $${e.price_rub} (ID: ${e.id})`).join('\n')}
 
 Analysis logic:
-1. Greeting / no topic mentioned -> intent: "consultation", ask which city and dates interest them.
+1. Greeting / no topic mentioned -> intent: "consultation", ask which city interests them or what kind of experience they are looking for.
 2. General question (payment, cancellation, meeting point, what to bring etc.) -> intent: "faq".
 3. Client names a CITY or REGION -> intent: "consultation", writer shows ALL excursions for that city as a list.
    If no excursions for that city -> tell them and suggest available cities.

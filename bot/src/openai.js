@@ -36,10 +36,14 @@ module.exports = {
             console.log("Analyzer Output:", rawJsonStr);
 
             let analysis = { lang_code: 'ru', intent: 'consultation', excursion_id: null, writer_instruction: 'Уточни, что интересует клиента.' };
+
             if (rawJsonStr) {
                 try {
                     const cleanJsonStr = rawJsonStr.replace(/```json/g, '').replace(/```/g, '').trim();
-                    analysis = JSON.parse(cleanJsonStr);
+                    const parsed = JSON.parse(cleanJsonStr);
+                    if (parsed) {
+                        analysis = { ...analysis, ...parsed };
+                    }
                 } catch (e) {
                     console.error("JSON Parse Error:", e.message, "Raw:", rawJsonStr.slice(0, 200));
                 }
@@ -66,9 +70,9 @@ module.exports = {
             }
 
             // Embedded tags for index.js
-            let embeddedTags = `[LANG:${analysis.lang_code || 'ru'}]`;
+            let embeddedTags = `[LANG:${analysis.lang_code || 'ru'}] [INTENT:${analysis.intent || 'consultation'}]`;
             if (analysis.excursion_id) {
-                embeddedTags += `\n[BOOK_REQUEST: ${analysis.excursion_id}]`;
+                embeddedTags += `\n[EXCURSION_ID: ${analysis.excursion_id}]`;
             }
 
             return finalMessage + '\n' + embeddedTags;

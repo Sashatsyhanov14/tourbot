@@ -89,7 +89,7 @@ module.exports = {
     return { data, error };
   },
 
-  async createRequest(userId, excursionId, excursionTitle, fullName, tourDate, hotelName, priceUsd, phone, referrerId = null) {
+  async createRequest(userId, excursionId, excursionTitle, fullName, tourDate, hotelName, priceRub, phone, referrerId = null) {
     const reqId = crypto.randomUUID();
     const { data, error } = await supabase
       .from('requests')
@@ -101,7 +101,7 @@ module.exports = {
         full_name: fullName,
         tour_date: tourDate,
         hotel_name: hotelName,
-        price_usd: priceUsd,
+        price_rub: priceRub,
         phone: phone || null,
         referrer_id: referrerId,
         status: 'new',
@@ -110,7 +110,7 @@ module.exports = {
       .select()
       .single();
 
-    if (error) console.error('Supabase createRequest error:', error.message);
+    if (error) console.error('[Supabase createRequest Error]:', error.message);
     return { data, error };
   }
 };

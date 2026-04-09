@@ -35,6 +35,10 @@ bot.use(async (ctx, next) => {
 
 // --- HELPER: Unified Booking Notification ---
 async function sendBookingAlert(order, userData, bookingDetails, origin = 'AI Chat') {
+    if (!order || !order.id) {
+        console.error('[sendBookingAlert] Skipping alert: order is null or invalid (likely DB insertion failed)');
+        return;
+    }
     try {
         const { data: history } = await getHistory(userData.telegram_id, 10);
         const { data: excursions } = await getExcursions();
@@ -43,7 +47,7 @@ async function sendBookingAlert(order, userData, bookingDetails, origin = 'AI Ch
         const aiReport = await getManagerReport(userData, history, selectedEx, bookingDetails, origin);
         
         // Direct link to user
-        const userLink = userData.username ? `@${userData.username}` : `[Профиль](tg://user?id=${userData.telegram_id})`;
+        const userLink = `[Tg Link](tg://user?id=${userData.telegram_id})`;
         const userLang = userLangCache[userData.telegram_id] || 'ru';
         const header = `👤 **Клиент:** ${userData.username ? '@'+userData.username : 'Без юзернейма'} (\`${userData.telegram_id}\`)\n🌐 **Язык:** ${userLang.toUpperCase()}\n🔗 ${userLink}\n`;
         const fullReport = header + '\n' + aiReport;
@@ -102,12 +106,6 @@ bot.action(/^accept_req_(.+)$/, async (ctx) => {
             ctx.callbackQuery.message.text + `\n\n✅ ПРИНЯТО: @${ctx.from.username || managerId}`,
             Markup.inlineKeyboard([[Markup.button.callback('💰 Начислить бонусы', `bonus_req_${requestId}`)]])
         );
-
-        const lang = userLangCache[request.user_id] || 'ru';
-        const msgRu = `✅ Ваша заявка на экскурсию «${request.excursion_title}» принята в работу! Оператор свяжется с вами в ближайшее время.`;
-        const msg = await getLocalizedText(lang, msgRu);
-        await bot.telegram.sendMessage(request.user_id, msg);
-
     } catch (e) { console.error('Accept error:', e.message); }
 
     await ctx.answerCbQuery('✅ Вы приняли заявку.');
@@ -167,12 +165,6 @@ bot.action(/^bonus_req_(.+)$/, async (ctx) => {
                 created_at: new Date().toISOString()
             }).catch(e => console.error('Commission log error:', e.message));
 
-            try {
-                const refLang = userLangCache[referrerId] || 'ru';
-                const refRu = `💰 Вам начислено $${reward} (1% от заявки на экскурсию «${request.excursion_title}»)! Ваш баланс: $${newBalance}`;
-                const refMsg = await getLocalizedText(refLang, refRu);
-                await bot.telegram.sendMessage(referrerId, refMsg);
-            } catch (e) { }
 
             await ctx.editMessageText(
                 ctx.callbackQuery.message.text + `\n\n💰 БОНУС $${reward} начислен рефереру (ID: ${referrerId})`,
@@ -189,21 +181,22 @@ bot.action(/^bonus_req_(.+)$/, async (ctx) => {
 });
 
 bot.action(/^start_chat_book_(.+)$/, async (ctx) => {
-    const telegramId = ctx.from.id;
     const excursionId = ctx.match[1];
-    const { data: excursions } = await getExcursions();
-    const selectedEx = excursions ? excursions.find(e => e.id === excursionId) : null;
-    
-    if (!selectedEx) return ctx.answerCbQuery('❌ Экскурсия не найдена.', { show_alert: true });
+    const telegramId = ctx.from.id;
+    await startBookingStepper(ctx, telegramId, excursionId);
+});
 
+async function startBookingStepper(ctx, telegramId, excursionId) {
     userStates.set(telegramId, { step: 'name', excursionId, data: {} });
     const lang = userLangCache[telegramId] || 'ru';
     const namePromptRu = `С радостью подготовлю для вас бронь! 😍\n\n👤 Как к вам можно обращаться? Напишите, пожалуйста, ваше ФИО.`;
     const namePrompt = await getLocalizedText(lang, namePromptRu);
     
-    await ctx.answerCbQuery();
+    if (ctx.callbackQuery) {
+        try { await ctx.answerCbQuery(); } catch (e) {}
+    }
     return ctx.reply(namePrompt, Markup.inlineKeyboard([[Markup.button.callback('❌ Отмена', 'cancel_stepper')]]));
-});
+}
 
 bot.action('cancel_stepper', async (ctx) => {
     userStates.delete(ctx.from.id);
@@ -734,7 +727,6 @@ bot.on('text', async (ctx) => {
 
         const aiResponse = await getChatResponse(excursions, faqText, history, userText);
 
-        // --- LANGUAGE SYNC ---
         const langMatch = aiResponse.match(/\[LANG:\s*([a-z]{2})\]/i);
         if (langMatch) {
             const newLang = langMatch[1].toLowerCase();
@@ -744,18 +736,34 @@ bot.on('text', async (ctx) => {
             }
         }
 
+        const intentMatch = aiResponse.match(/\[INTENT:\s*([a-z_]+)\]/i);
+        const exMatch = aiResponse.match(/\[EXCURSION_ID:\s*([a-zA-Z0-9_-]+)\]/i);
         const bookMatch = aiResponse.match(/\[BOOK_REQUEST:\s*([a-zA-Z0-9_-]+)\]/i);
-        let finalResponse = aiResponse.replace(/\[BOOK_REQUEST:.*?\]/gi, '').replace(/\[LANG:.*?\]/gi, '').trim();
+        
+        let finalResponse = aiResponse
+            .replace(/\[EXCURSION_ID:.*?\]/gi, '')
+            .replace(/\[BOOK_REQUEST:.*?\]/gi, '')
+            .replace(/\[LANG:.*?\]/gi, '')
+            .replace(/\[INTENT:.*?\]/gi, '')
+            .trim();
 
-        if (bookMatch) {
-            const excursionId = bookMatch[1].trim();
+        if (exMatch) {
+            const excursionId = exMatch[1].trim();
             const selectedEx = (excursions || []).find(e => e.id === excursionId);
 
             if (selectedEx) {
-                userStates.set(telegramId, { step: 'name', excursionId, data: {} });
-                await saveMessage(telegramId, 'assistant', finalResponse);
+                lastShownExcursion[telegramId] = excursionId;
+                
+                // Show photos immediately when excursion is mentioned/shown
                 await sendExcursionPhotos(telegramId, selectedEx);
-                try { return await ctx.reply(finalResponse, { parse_mode: 'Markdown' }); } catch (e) { return ctx.reply(finalResponse); }
+                
+                // If starting a sale, send confirms THEN stepper
+                if (intentMatch && intentMatch[1].toLowerCase() === 'sale') {
+                    await saveMessage(telegramId, 'assistant', finalResponse);
+                    try { await ctx.reply(finalResponse, { parse_mode: 'Markdown' }); } catch (e) { await ctx.reply(finalResponse); }
+                    await startBookingStepper(ctx, telegramId, excursionId);
+                    return;
+                }
             }
         }
 
