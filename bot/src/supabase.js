@@ -1,6 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const dotenv = require('dotenv');
 const path = require('path');
+const crypto = require('crypto');
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
@@ -12,7 +13,6 @@ if (!supabaseUrl || !supabaseKey) {
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey);
-const crypto = require('crypto');
 
 module.exports = {
   supabase,
@@ -112,5 +112,26 @@ module.exports = {
 
     if (error) console.error('[Supabase createRequest Error]:', error.message);
     return { data, error };
+  },
+
+  async getLangFromHistory(userId) {
+    // Get last user message to check for language tag
+    const { data: lastUserMsgs } = await supabase
+        .from('chat_history')
+        .select('content')
+        .eq('user_id', userId)
+        .eq('role', 'user')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+    if (lastUserMsgs && lastUserMsgs.length > 0) {
+        const content = lastUserMsgs[0].content;
+        const langMatch = content.match(/\[LANG:\s*([a-z]{2})\]/i);
+        if (langMatch) return langMatch[1].toLowerCase();
+    }
+
+    // Fallback to user profile
+    const { data: user } = await supabase.from('users').select('language_code').eq('telegram_id', userId).single();
+    return user?.language_code || 'ru';
   }
 };

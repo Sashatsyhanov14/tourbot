@@ -88,7 +88,7 @@ module.exports = {
     },
 
     // === AGENT 4: THE MANAGER ALERTER ===
-    async getManagerReport(userData, history, excursion, bookingDetails, origin = 'AI Chat') {
+    async getManagerReport(userData, history, excursion, bookingDetails, origin = 'AI Chat', managerLang = 'ru') {
         try {
             const context = `
 Источник: ${origin}
@@ -105,7 +105,7 @@ module.exports = {
             const response = await openai.chat.completions.create({
                 model: 'openai/gpt-4o-mini',
                 messages: [
-                    { role: 'system', content: MANAGER_ALERTER_PROMPT },
+                    { role: 'system', content: MANAGER_ALERTER_PROMPT(managerLang) },
                     { role: 'user', content: context }
                 ],
                 temperature: 0.5
