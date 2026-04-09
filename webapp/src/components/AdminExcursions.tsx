@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
 const EMPTY_FORM = {
-    city: '', title: '', description: '', price_rub: 0,
+    city: '', title: '', description: '', price_usd: 0,
     duration: '', included: '', meeting_point: '',
     city_en: '', title_en: '', description_en: '', duration_en: '', included_en: '', meeting_point_en: '',
     city_tr: '', title_tr: '', description_tr: '', duration_tr: '', included_tr: '', meeting_point_tr: '',
@@ -181,7 +181,7 @@ export default function AdminExcursions({ t }: { t: any }) {
                                 <div className="space-y-1"><label className="text-[10px] uppercase text-slate-600 font-bold ml-1">Описание</label><textarea rows={3} value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} className="w-full bg-black/20 border border-white/5 rounded-xl p-3 text-sm focus:border-primary/40 outline-none text-white" /></div>
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-1"><label className="text-[10px] uppercase text-slate-600 font-bold ml-1">Длительность</label><input value={formData.duration} onChange={e => setFormData({ ...formData, duration: e.target.value })} className="w-full bg-black/20 border border-white/5 rounded-xl p-3 text-sm focus:border-primary/40 outline-none text-white" /></div>
-                                    <div className="space-y-1"><label className="text-[10px] uppercase text-slate-600 font-bold ml-1">Цена ($)</label><input type="number" value={formData.price_rub} onChange={e => setFormData({ ...formData, price_rub: parseInt(e.target.value) })} className="w-full bg-black/20 border border-white/5 rounded-xl p-3 text-sm focus:border-primary/40 outline-none text-white" /></div>
+                                    <div className="space-y-1"><label className="text-[10px] uppercase text-slate-600 font-bold ml-1">Цена ($)</label><input type="number" value={formData.price_usd} onChange={e => setFormData({ ...formData, price_usd: parseInt(e.target.value) })} className="w-full bg-black/20 border border-white/5 rounded-xl p-3 text-sm focus:border-primary/40 outline-none text-white" /></div>
                                 </div>
                                 <div className="space-y-1"><label className="text-[10px] uppercase text-slate-600 font-bold ml-1">Что включено</label><textarea rows={2} value={formData.included} onChange={e => setFormData({ ...formData, included: e.target.value })} className="w-full bg-black/20 border border-white/5 rounded-xl p-3 text-sm focus:border-primary/40 outline-none text-white" /></div>
                                 <div className="space-y-1"><label className="text-[10px] uppercase text-slate-600 font-bold ml-1">Место встречи</label><input value={formData.meeting_point} onChange={e => setFormData({ ...formData, meeting_point: e.target.value })} className="w-full bg-black/20 border border-white/5 rounded-xl p-3 text-sm focus:border-primary/40 outline-none text-white" /></div>
@@ -226,7 +226,7 @@ export default function AdminExcursions({ t }: { t: any }) {
                                 <p className="text-[10px] font-black text-primary uppercase tracking-wider">{ex.city}</p>
                                 <h4 className="text-white font-bold truncate">{ex.title}</h4>
                                 <div className="flex items-center gap-3 mt-1 underline decoration-white/5 underline-offset-4">
-                                    <span className="text-[11px] text-slate-500">${ex.price_rub}</span>
+                                    <span className="text-[11px] text-slate-500">${ex.price_usd}</span>
                                     <span className="text-[11px] text-slate-500">{ex.duration}</span>
                                 </div>
                             </div>
