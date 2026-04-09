@@ -113,7 +113,7 @@ const AdminRequests: React.FC<{ t?: any }> = () => {
                                             </div>
                                         </div>
                                         <div className="text-right flex-shrink-0">
-                                            <p className="text-2xl font-black text-primary tracking-tighter">{req.price_rub.toLocaleString()}₽</p>
+                                            <p className="text-2xl font-black text-primary tracking-tighter">${req.price_usd?.toLocaleString()}</p>
                                             <p className="text-[8px] text-slate-600 font-black uppercase tracking-widest">цена тура</p>
                                         </div>
                                     </div>

@@ -44,7 +44,7 @@ module.exports = {
     const { data, error } = await supabase
       .from('excursions')
       .select(`
-        id, sort_number, city, title, description, price_rub, duration, included, meeting_point, image_url, image_urls, is_active,
+        id, sort_number, city, title, description, price_usd, duration, included, meeting_point, image_url, image_urls, is_active,
         city_en, city_tr, city_de, city_pl, city_ar, city_fa,
         title_en, title_tr, title_de, title_pl, title_ar, title_fa,
         description_en, description_tr, description_de, description_pl, description_ar, description_fa,
@@ -89,7 +89,7 @@ module.exports = {
     return { data, error };
   },
 
-  async createRequest(userId, excursionId, excursionTitle, fullName, tourDate, hotelName, priceRub, phone, referrerId = null) {
+  async createRequest(userId, excursionId, excursionTitle, fullName, tourDate, hotelName, priceUsd, phone, referrerId = null) {
     const reqId = crypto.randomUUID();
     const { data, error } = await supabase
       .from('requests')
@@ -101,7 +101,7 @@ module.exports = {
         full_name: fullName,
         tour_date: tourDate,
         hotel_name: hotelName,
-        price_rub: priceRub,
+        price_usd: priceUsd,
         phone: phone || null,
         referrer_id: referrerId,
         status: 'new',

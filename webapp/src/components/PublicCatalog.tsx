@@ -6,7 +6,7 @@ interface Excursion {
     city: string;
     title: string;
     description: string;
-    price_rub: number;
+    price_usd: number;
     duration: string;
     included?: string;
     meeting_point?: string;
@@ -198,7 +198,7 @@ export default function PublicCatalog({ t, lang, initialExcursionId }: { t: any,
                                 <div className="flex items-center justify-between pt-2">
                                     <div className="space-y-1">
                                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{lang === 'ru' ? 'Стоимость' : 'Price'}</p>
-                                        <p className="text-2xl font-black text-primary">${ex.price_rub}</p>
+                                        <p className="text-2xl font-black text-primary">${ex.price_usd}</p>
                                     </div>
                                     <div className="text-right space-y-1">
                                         <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">{lang === 'ru' ? 'Длительность' : 'Duration'}</p>
@@ -252,7 +252,7 @@ export default function PublicCatalog({ t, lang, initialExcursionId }: { t: any,
                             <div className="flex gap-4">
                                 <div className="flex-1 bg-[#1a1a1d] p-4 rounded-2xl border border-white/5 space-y-1">
                                     <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">{lang === 'ru' ? 'Стоимость' : 'Price'}</p>
-                                    <p className="text-xl font-black text-primary">${selectedEx.price_rub}</p>
+                                    <p className="text-xl font-black text-primary">${selectedEx.price_usd}</p>
                                 </div>
                                 <div className="flex-1 bg-[#1a1a1d] p-4 rounded-2xl border border-white/5 space-y-1">
                                     <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">{lang === 'ru' ? 'Длительность' : 'Duration'}</p>

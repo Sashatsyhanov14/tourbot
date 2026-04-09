@@ -148,9 +148,9 @@ bot.action(/^bonus_req_(.+)$/, async (ctx) => {
     try {
         // Use referrer_id stored directly on the request at booking time
         const referrerId = request.referrer_id;
-        const price = request.price_usd || (request.price_rub ? request.price_rub / 100 : 0);
+        const price = request.price_usd || 0;
         
-        if (referrerId && (request.price_usd || request.price_rub)) {
+        if (referrerId && price) {
             const rewardPercentage = 0.01; // 1% for tours
             const reward = Math.round((price * rewardPercentage) * 100) / 100;
             const { data: refUser } = await supabase.from('users').select('balance').eq('telegram_id', referrerId).single();
@@ -344,10 +344,10 @@ async function handleWebAppData(ctx, dataStr) {
             
             // If title is missing (simplified payload), fetch from DB
             if (!excursionTitle && excursionId) {
-                const { data: ex } = await supabase.from('excursions').select('title, price_rub').eq('id', excursionId).single();
+                const { data: ex } = await supabase.from('excursions').select('title, price_usd').eq('id', excursionId).single();
                 if (ex) {
                     excursionTitle = ex.title;
-                    priceRub = ex.price_rub;
+                    priceUsd = ex.price_usd;
                 }
             }
 
@@ -361,7 +361,7 @@ async function handleWebAppData(ctx, dataStr) {
                 fullName,
                 tourDate,
                 'Mini App Catalog', // hotel_name placeholder for webapp
-                priceRub || data.price_usd || 0,
+                priceUsd || data.price_usd || 0,
                 phone,
                 user?.referrer_id || null
             );
@@ -639,14 +639,14 @@ bot.on('text', async (ctx) => {
 
             const { data: user } = await getUser(telegramId);
 
-            const { data: order } = await createRequest(
+            const { data: order, error: insErr } = await createRequest(
                 telegramId,
-                excursionId,
-                selectedEx ? selectedEx.title : 'Экскурсия',
+                state.data.excursionId,
+                state.data.excursionTitle,
                 state.data.fullName,
                 state.data.tourDate,
-                state.data.hotelName,
-                selectedEx ? selectedEx.price_rub : 0,
+                userText, // Hotel name
+                state.data.price_usd || 0,
                 state.data.phone,
                 user?.referrer_id || null
             );
