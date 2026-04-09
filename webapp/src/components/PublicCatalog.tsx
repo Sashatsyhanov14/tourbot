@@ -37,7 +37,7 @@ export default function PublicCatalog({ t, lang, initialExcursionId }: { t: any,
     const [loading, setLoading] = useState(true);
     const [bookingEx, setBookingEx] = useState<Excursion | null>(null);
     const [selectedEx, setSelectedEx] = useState<Excursion | null>(null);
-    const [formData, setFormData] = useState({ name: '', phone: '', date: '' });
+    const [formData, setFormData] = useState({ name: '', phone: '', date: '', hotel: '' });
 
     const tg = window.Telegram?.WebApp;
 
@@ -82,7 +82,8 @@ export default function PublicCatalog({ t, lang, initialExcursionId }: { t: any,
             excursionId: bookingEx.id,
             fullName: formData.name,
             phone: formData.phone,
-            tourDate: formData.date
+            tourDate: formData.date,
+            hotelName: formData.hotel
         };
 
         try {
@@ -369,6 +370,16 @@ export default function PublicCatalog({ t, lang, initialExcursionId }: { t: any,
                                     placeholder={lang === 'ru' ? '25 мая или "Завтра"' : 'May 25 or "Tomorrow"'}
                                     value={formData.date}
                                     onChange={e => setFormData({ ...formData, date: e.target.value })}
+                                    className="w-full bg-black/20 border border-white/5 rounded-2xl p-4 text-sm focus:border-primary/50 outline-none transition-all"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">{lang === 'ru' ? 'Отель / Адрес' : 'Hotel / Address'}</label>
+                                <input
+                                    type="text"
+                                    placeholder={lang === 'ru' ? 'Название отеля или адрес' : 'Hotel name or address'}
+                                    value={formData.hotel}
+                                    onChange={e => setFormData({ ...formData, hotel: e.target.value })}
                                     className="w-full bg-black/20 border border-white/5 rounded-2xl p-4 text-sm focus:border-primary/50 outline-none transition-all"
                                 />
                             </div>

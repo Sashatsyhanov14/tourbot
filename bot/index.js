@@ -340,7 +340,7 @@ async function handleWebAppData(ctx, dataStr) {
         // --- Quick Booking from Catalog ---
         if (data.type === 'quick_book') {
             console.log('[BOOKING_DEBUG] Received quick_book data:', data);
-            let { excursionId, excursionTitle, fullName, phone, tourDate, priceUsd } = data;
+            let { excursionId, excursionTitle, fullName, phone, tourDate, priceUsd, hotelName } = data;
             
             // If title is missing (simplified payload), fetch from DB
             if (!excursionTitle && excursionId) {
@@ -365,7 +365,7 @@ async function handleWebAppData(ctx, dataStr) {
                 excursionTitle || 'Unknown Excursion',
                 fullName,
                 tourDate,
-                'Mini App Catalog', // hotel_name placeholder for webapp
+                hotelName || 'WebApp Catalog', 
                 priceUsd || data.price_usd || 0,
                 phone,
                 user?.referrer_id || null
@@ -385,7 +385,7 @@ async function handleWebAppData(ctx, dataStr) {
                     fullName: fullName,
                     phone: phone,
                     tourDate: tourDate,
-                    hotelName: 'WebApp Catalog'
+                    hotelName: hotelName || 'WebApp Catalog'
                 }, 'Mini App Catalog');
                 console.log('[BOOKING_DEBUG] Alerts sent!');
             } catch (alertErr) {
