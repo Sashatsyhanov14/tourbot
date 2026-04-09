@@ -207,135 +207,30 @@ const AdminStats: React.FC<{ t: any, isAdmin?: boolean, user?: any }> = ({ t, is
     if (loading) return <div className="text-center py-20 opacity-50 animate-pulse">{t.analyzing || 'Анализ данных...'}</div>;
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            {/* Manager Management */}
-            {isAdmin && (
-                <div className="bg-[#1a1a1d] p-5 rounded-3xl border border-white/5 space-y-4">
-                    <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
-                        <span className="material-symbols-outlined text-secondary text-[18px]">manage_accounts</span>
-                        {t.manageManagers || 'Управление Менеджерами'}
-                    </h3>
-                    <div className="space-y-4">
-                        <div className="flex gap-3">
-                            <div className="flex-1 relative">
-                                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-[18px]">fingerprint</span>
-                                <input
-                                    type="text"
-                                    value={newManagerId}
-                                    onChange={e => setNewManagerId(e.target.value)}
-                                    placeholder={t.enterTgId || 'Telegram ID'}
-                                    className="w-full bg-black/40 border border-white/10 rounded-2xl pl-11 pr-4 py-4 text-sm font-bold text-white outline-none focus:border-primary/50 transition-all placeholder:text-slate-600"
-                                />
-                            </div>
-                            <button onClick={handleAddManager} className="px-6 py-4 bg-primary text-black rounded-2xl text-xs font-black uppercase tracking-widest hover:brightness-110 transition-all active:scale-95 flex items-center gap-2">
-                                {t.assignEmployee || 'Добавить'}
-                            </button>
-                        </div>
+        <div className="space-y-5 animate-in fade-in duration-500">
 
-                        <div className="flex items-center gap-4 bg-surface-container-lowest/50 p-2 px-3 rounded-lg border border-outline-variant/10 bg-black/20">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Роль для назначения:</span>
-                            <div className="flex gap-2 flex-1">
-                                <button 
-                                    onClick={() => setNewManagerRole('manager')}
-                                    className={`flex-1 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${newManagerRole === 'manager' ? 'bg-secondary/20 text-secondary border border-secondary/30' : 'bg-white/5 text-slate-500'}`}
-                                >
-                                    {t.selectManager || 'Manager'}
-                                </button>
-                                <button 
-                                    onClick={() => setNewManagerRole('admin')}
-                                    className={`flex-1 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${newManagerRole === 'admin' ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-white/5 text-slate-500'}`}
-                                >
-                                    {t.selectAdmin || 'Admin'}
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="relative">
-                            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-[18px]">edit_note</span>
-                            <input
-                                type="text"
-                                value={newManagerNote}
-                                onChange={e => setNewManagerNote(e.target.value)}
-                                placeholder="Личная заметка к сотруднику (подпись)..."
-                                className="w-full bg-black/40 border border-white/10 rounded-2xl pl-11 pr-4 py-4 text-sm font-bold text-white outline-none focus:border-secondary/50 transition-all placeholder:text-slate-600"
-                            />
-                        </div>
-                    </div>
-                    {managerMsg && <p className="text-xs text-primary/80 bg-primary/10 border border-primary/20 p-3 rounded-xl">{managerMsg}</p>}
-                    {managers.length > 0 && (
-                        <div className="space-y-2 pt-2 border-t border-white/5">
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t.activeEmployees || 'Сотрудники'}</p>
-                            {managers.map(m => (
-                                <div key={m.telegram_id} className="flex items-center justify-between bg-white/[0.02] p-4 rounded-2xl border border-white/5 transition-all hover:bg-white/[0.04]">
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <p className="text-sm font-black text-slate-200">@{m.username || '—'}</p>
-                                            <span className="bg-white/5 text-[8px] font-mono text-slate-600 px-1.5 py-0.5 rounded border border-white/5">{m.telegram_id}</span>
-                                        </div>
-                                        <div className="relative group max-w-[200px]">
-                                            <div className="absolute inset-y-0 left-0 w-0.5 bg-secondary rounded-full opacity-0 group-focus-within:opacity-100 transition-all blur-[1px]" />
-                                            <div className="flex items-center gap-2 bg-secondary/5 border border-secondary/20 rounded-xl px-3 py-1.5">
-                                                <span className="material-symbols-outlined text-[14px] text-secondary/60">badge</span>
-                                                <input 
-                                                    className="text-[11px] font-bold text-secondary bg-transparent border-none outline-none w-full placeholder:text-secondary/30"
-                                                    placeholder="Подпись менеджера..."
-                                                    defaultValue={m.note}
-                                                    onBlur={(e) => handleUpdateNote(m.telegram_id, e.target.value)}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        {m.role === 'founder' ? (
-                                            <span className="text-[9px] font-black px-2 py-1 rounded-lg uppercase bg-yellow-500/10 text-yellow-500 border border-yellow-500/20">
-                                                {t.ownerBadge || 'Владелец'}
-                                            </span>
-                                        ) : (
-                                            <div className="flex bg-black/30 p-0.5 rounded-lg border border-white/5">
-                                                <button 
-                                                    onClick={() => handleUpdateRole(m.telegram_id, 'manager')}
-                                                    className={`px-2 py-1 rounded-md text-[9px] font-black uppercase transition-all ${m.role === 'manager' ? 'bg-secondary text-black' : 'text-slate-500 hover:text-white'}`}
-                                                >
-                                                    M
-                                                </button>
-                                                <button 
-                                                    onClick={() => handleUpdateRole(m.telegram_id, 'admin')}
-                                                    className={`px-2 py-1 rounded-md text-[9px] font-black uppercase transition-all ${m.role === 'admin' ? 'bg-primary text-black' : 'text-slate-500 hover:text-white'}`}
-                                                >
-                                                    A
-                                                </button>
-                                            </div>
-                                        )}
-                                        {m.role !== 'founder' && (
-                                            <button onClick={() => handleRemoveManager(m.telegram_id)} className="w-9 h-9 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all flex items-center justify-center border border-red-500/20">
-                                                <span className="material-symbols-outlined text-[18px]">person_remove</span>
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 gap-4">
-                <div className="bg-[#1a1a1d] p-5 rounded-3xl border border-white/5">
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">{t.statsTotalUsers}</p>
+            {/* ── SECTION 1: Stats Cards ── */}
+            <div className="grid grid-cols-2 gap-3">
+                <div className="bg-[#1a1a1d] p-5 rounded-3xl border border-white/5 flex flex-col gap-1">
+                    <span className="material-symbols-outlined text-slate-500 text-[18px]">group</span>
                     <p className="text-3xl font-black text-white">{stats.totalUsers}</p>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t.statsTotalUsers}</p>
                 </div>
-                <div className="bg-[#1a1a1d] p-5 rounded-3xl border border-white/5">
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">{t.statsTotalRequests}</p>
+                <div className="bg-[#1a1a1d] p-5 rounded-3xl border border-white/5 flex flex-col gap-1">
+                    <span className="material-symbols-outlined text-slate-500 text-[18px]">list_alt</span>
                     <p className="text-3xl font-black text-white">{stats.totalRequests}</p>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t.statsTotalRequests}</p>
                 </div>
-                <div className="bg-primary/10 p-5 rounded-3xl border border-primary/20 col-span-2">
-                    <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">{t.statsRevenue}</p>
-                    <p className="text-4xl font-black text-white">${stats.totalRevenue.toLocaleString()}</p>
+                <div className="bg-primary/10 p-5 rounded-3xl border border-primary/20 col-span-2 flex items-center justify-between">
+                    <div>
+                        <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">{t.statsRevenue}</p>
+                        <p className="text-4xl font-black text-white">${stats.totalRevenue.toLocaleString()}</p>
+                    </div>
+                    <span className="material-symbols-outlined text-primary text-[40px] opacity-30">payments</span>
                 </div>
             </div>
 
-            {/* New requests alert */}
+            {/* ── SECTION 2: New Requests Alert ── */}
             {stats.newRequests > 0 && (
                 <div className="bg-blue-500/10 p-4 rounded-2xl border border-blue-500/20 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -346,7 +241,7 @@ const AdminStats: React.FC<{ t: any, isAdmin?: boolean, user?: any }> = ({ t, is
                 </div>
             )}
 
-            {/* Referral Analytics + Payouts */}
+            {/* ── SECTION 3: Referral Analytics + Payouts ── */}
             {referralRows.length > 0 && (
                 <div className="bg-[#1a1a1d] rounded-3xl border border-white/5 overflow-hidden">
                     <div className="px-5 py-4 border-b border-white/5 flex items-center gap-2">
@@ -356,7 +251,6 @@ const AdminStats: React.FC<{ t: any, isAdmin?: boolean, user?: any }> = ({ t, is
                     <div className="divide-y divide-white/5">
                         {referralRows.map(ref => (
                             <div key={ref.telegram_id} className="p-4 space-y-3">
-                                {/* Header row */}
                                 <div className="flex items-start gap-4">
                                     <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center flex-shrink-0 border border-primary/20">
                                         <span className="material-symbols-outlined text-primary text-[24px]">person</span>
@@ -366,12 +260,11 @@ const AdminStats: React.FC<{ t: any, isAdmin?: boolean, user?: any }> = ({ t, is
                                             <p className="text-base font-black text-white truncate">@{ref.username}</p>
                                             <span className="bg-white/5 text-[9px] font-mono text-slate-500 px-2 py-0.5 rounded-md border border-white/5">{ref.telegram_id}</span>
                                         </div>
-                                        {/* Premium Tag Input */}
                                         <div className="relative group max-w-[200px]">
                                             <div className="absolute inset-y-0 left-0 w-1 bg-primary rounded-full opacity-0 group-focus-within:opacity-100 transition-all blur-[2px]" />
                                             <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-xl px-3 py-1.5 hover:bg-primary/10 transition-all">
                                                 <span className="material-symbols-outlined text-[14px] text-primary/60">label</span>
-                                                <input 
+                                                <input
                                                     className="text-[11px] font-bold text-primary bg-transparent border-none outline-none w-full placeholder:text-primary/30"
                                                     placeholder="Подпись партнёра..."
                                                     defaultValue={ref.note}
@@ -385,8 +278,6 @@ const AdminStats: React.FC<{ t: any, isAdmin?: boolean, user?: any }> = ({ t, is
                                         <p className="text-[9px] text-slate-500 uppercase font-black tracking-widest">баланс</p>
                                     </div>
                                 </div>
-
-                                {/* Stats row */}
                                 <div className="grid grid-cols-3 gap-2">
                                     {[
                                         { label: 'Привёл', value: ref.invitedCount, color: 'text-blue-400' },
@@ -399,8 +290,6 @@ const AdminStats: React.FC<{ t: any, isAdmin?: boolean, user?: any }> = ({ t, is
                                         </div>
                                     ))}
                                 </div>
-
-                                {/* Payout button + history */}
                                 <div className="flex items-center gap-2">
                                     <button
                                         onClick={() => handlePayout(ref)}
@@ -416,13 +305,9 @@ const AdminStats: React.FC<{ t: any, isAdmin?: boolean, user?: any }> = ({ t, is
                                         </div>
                                     )}
                                 </div>
-
-                                {/* Payout feedback */}
                                 {payoutMsg[ref.telegram_id] && (
                                     <p className="text-xs text-green-400 bg-green-500/10 border border-green-500/20 p-2 rounded-xl">{payoutMsg[ref.telegram_id]}</p>
                                 )}
-
-                                {/* Bookings from this referral's invitees */}
                                 {ref.requests && ref.requests.length > 0 && (
                                     <details className="text-[10px]">
                                         <summary className="text-slate-400 cursor-pointer hover:text-slate-200 font-bold uppercase tracking-wider flex items-center gap-1">
@@ -450,8 +335,6 @@ const AdminStats: React.FC<{ t: any, isAdmin?: boolean, user?: any }> = ({ t, is
                                         </div>
                                     </details>
                                 )}
-
-                                {/* Payout history */}
                                 {ref.payouts.length > 0 && (
                                     <details className="text-[10px]">
                                         <summary className="text-slate-500 cursor-pointer hover:text-slate-300 font-bold uppercase tracking-wider">История выплат ({ref.payouts.length})</summary>
@@ -464,6 +347,103 @@ const AdminStats: React.FC<{ t: any, isAdmin?: boolean, user?: any }> = ({ t, is
                                 )}
                             </div>
                         ))}
+                    </div>
+                </div>
+            )}
+
+            {/* ── SECTION 4: Staff Management (Admin only, at bottom) ── */}
+            {isAdmin && (
+                <div className="bg-[#1a1a1d] rounded-3xl border border-white/5 overflow-hidden">
+                    <div className="px-5 py-4 border-b border-white/5 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-secondary text-[18px]">manage_accounts</span>
+                        <h3 className="text-sm font-bold text-slate-200">{t.manageManagers || 'Управление сотрудниками'}</h3>
+                    </div>
+                    <div className="p-5 space-y-4">
+                        {/* Staff list */}
+                        {managers.length > 0 && (
+                            <div className="space-y-2">
+                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t.activeEmployees || 'Сотрудники'}</p>
+                                {managers.map(m => (
+                                    <div key={m.telegram_id} className="flex items-center justify-between bg-white/[0.02] p-4 rounded-2xl border border-white/5 transition-all hover:bg-white/[0.04]">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <p className="text-sm font-black text-slate-200">@{m.username || '—'}</p>
+                                                <span className="bg-white/5 text-[8px] font-mono text-slate-600 px-1.5 py-0.5 rounded border border-white/5">{m.telegram_id}</span>
+                                            </div>
+                                            <div className="relative group max-w-[200px]">
+                                                <div className="flex items-center gap-2 bg-secondary/5 border border-secondary/20 rounded-xl px-3 py-1.5">
+                                                    <span className="material-symbols-outlined text-[14px] text-secondary/60">badge</span>
+                                                    <input
+                                                        className="text-[11px] font-bold text-secondary bg-transparent border-none outline-none w-full placeholder:text-secondary/30"
+                                                        placeholder="Подпись менеджера..."
+                                                        defaultValue={m.note}
+                                                        onBlur={(e) => handleUpdateNote(m.telegram_id, e.target.value)}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {m.role === 'founder' ? (
+                                                <span className="text-[9px] font-black px-2 py-1 rounded-lg uppercase bg-yellow-500/10 text-yellow-500 border border-yellow-500/20">
+                                                    {t.ownerBadge || 'Владелец'}
+                                                </span>
+                                            ) : (
+                                                <div className="flex bg-black/30 p-0.5 rounded-lg border border-white/5">
+                                                    <button onClick={() => handleUpdateRole(m.telegram_id, 'manager')} className={`px-2 py-1 rounded-md text-[9px] font-black uppercase transition-all ${m.role === 'manager' ? 'bg-secondary text-black' : 'text-slate-500 hover:text-white'}`}>M</button>
+                                                    <button onClick={() => handleUpdateRole(m.telegram_id, 'admin')} className={`px-2 py-1 rounded-md text-[9px] font-black uppercase transition-all ${m.role === 'admin' ? 'bg-primary text-black' : 'text-slate-500 hover:text-white'}`}>A</button>
+                                                </div>
+                                            )}
+                                            {m.role !== 'founder' && (
+                                                <button onClick={() => handleRemoveManager(m.telegram_id)} className="w-9 h-9 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all flex items-center justify-center border border-red-500/20">
+                                                    <span className="material-symbols-outlined text-[18px]">person_remove</span>
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Add staff form */}
+                        <div className="space-y-3 pt-3 border-t border-white/5">
+                            <div className="flex gap-3">
+                                <div className="flex-1 relative">
+                                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-[18px]">fingerprint</span>
+                                    <input
+                                        type="text"
+                                        value={newManagerId}
+                                        onChange={e => setNewManagerId(e.target.value)}
+                                        placeholder={t.enterTgId || 'Telegram ID или @username'}
+                                        className="w-full bg-black/40 border border-white/10 rounded-2xl pl-11 pr-4 py-4 text-sm font-bold text-white outline-none focus:border-primary/50 transition-all placeholder:text-slate-600"
+                                    />
+                                </div>
+                                <button onClick={handleAddManager} className="px-6 py-4 bg-primary text-black rounded-2xl text-xs font-black uppercase tracking-widest hover:brightness-110 transition-all active:scale-95">
+                                    {t.assignEmployee || '+ Добавить'}
+                                </button>
+                            </div>
+                            <div className="flex items-center gap-4 bg-black/20 p-2 px-3 rounded-xl border border-white/5">
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Роль:</span>
+                                <div className="flex gap-2 flex-1">
+                                    <button onClick={() => setNewManagerRole('manager')} className={`flex-1 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${newManagerRole === 'manager' ? 'bg-secondary/20 text-secondary border border-secondary/30' : 'bg-white/5 text-slate-500'}`}>
+                                        Manager
+                                    </button>
+                                    <button onClick={() => setNewManagerRole('admin')} className={`flex-1 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${newManagerRole === 'admin' ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-white/5 text-slate-500'}`}>
+                                        Admin
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="relative">
+                                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-[18px]">edit_note</span>
+                                <input
+                                    type="text"
+                                    value={newManagerNote}
+                                    onChange={e => setNewManagerNote(e.target.value)}
+                                    placeholder="Заметка (подпись сотрудника)..."
+                                    className="w-full bg-black/40 border border-white/10 rounded-2xl pl-11 pr-4 py-4 text-sm font-bold text-white outline-none focus:border-secondary/50 transition-all placeholder:text-slate-600"
+                                />
+                            </div>
+                            {managerMsg && <p className="text-xs text-primary/80 bg-primary/10 border border-primary/20 p-3 rounded-xl">{managerMsg}</p>}
+                        </div>
                     </div>
                 </div>
             )}
