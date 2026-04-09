@@ -328,40 +328,53 @@ const AdminStats: React.FC<{ t: any, isAdmin?: boolean, user?: any }> = ({ t, is
                             <div className="space-y-2">
                                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t.activeEmployees || 'Сотрудники'}</p>
                                 {managers.map(m => (
-                                    <div key={m.telegram_id} className="flex items-center justify-between bg-white/[0.02] p-4 rounded-2xl border border-white/5 transition-all hover:bg-white/[0.04]">
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <p className="text-sm font-black text-slate-200">@{m.username || '—'}</p>
-                                                <span className="bg-white/5 text-[8px] font-mono text-slate-600 px-1.5 py-0.5 rounded border border-white/5">{m.telegram_id}</span>
-                                            </div>
-                                            <div className="relative group max-w-[200px]">
-                                                <div className="flex items-center gap-2 bg-secondary/5 border border-secondary/20 rounded-xl px-3 py-1.5">
-                                                    <span className="material-symbols-outlined text-[14px] text-secondary/60">badge</span>
-                                                    <input
-                                                        className="text-[11px] font-bold text-secondary bg-transparent border-none outline-none w-full placeholder:text-secondary/30"
-                                                        placeholder="Подпись менеджера..."
-                                                        defaultValue={m.note}
-                                                        onBlur={(e) => handleUpdateNote(m.telegram_id, e.target.value)}
-                                                    />
+                                    <div key={m.telegram_id} className="bg-white/[0.02] p-4 rounded-3xl border border-white/5 space-y-3 transition-all hover:bg-white/[0.04]">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-6 h-6 bg-secondary/10 rounded-full flex items-center justify-center border border-secondary/20">
+                                                    <span className="material-symbols-outlined text-secondary text-[14px]">person</span>
                                                 </div>
+                                                <div className="flex flex-col">
+                                                    <p className="text-xs font-black text-slate-200">@{m.username || '—'}</p>
+                                                    <span className="text-[8px] font-mono text-slate-600">ID: {m.telegram_id}</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                {m.role === 'founder' ? (
+                                                    <span className="text-[9px] font-black px-2 py-1 rounded-lg uppercase bg-yellow-500/10 text-yellow-500 border border-yellow-500/20">
+                                                        {t.ownerBadge || 'Владелец'}
+                                                    </span>
+                                                ) : (
+                                                    <div className="flex bg-black/40 p-1 rounded-xl border border-white/5 shadow-inner">
+                                                        <button 
+                                                            onClick={() => handleUpdateRole(m.telegram_id, 'manager')} 
+                                                            className={`px-3 py-1 rounded-lg text-9px font-black uppercase transition-all ${m.role === 'manager' ? 'bg-secondary text-black shadow-lg shadow-secondary/20 scale-105' : 'text-slate-600 hover:text-white'}`}
+                                                        >
+                                                            M
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleUpdateRole(m.telegram_id, 'admin')} 
+                                                            className={`px-3 py-1 rounded-lg text-9px font-black uppercase transition-all ${m.role === 'admin' ? 'bg-primary text-black shadow-lg shadow-primary/20 scale-105' : 'text-slate-600 hover:text-white'}`}
+                                                        >
+                                                            A
+                                                        </button>
+                                                    </div>
+                                                )}
+                                                {m.role !== 'founder' && (
+                                                    <button onClick={() => handleRemoveManager(m.telegram_id)} className="w-8 h-8 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all flex items-center justify-center border border-red-500/20">
+                                                        <span className="material-symbols-outlined text-[16px]">person_remove</span>
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            {m.role === 'founder' ? (
-                                                <span className="text-[9px] font-black px-2 py-1 rounded-lg uppercase bg-yellow-500/10 text-yellow-500 border border-yellow-500/20">
-                                                    {t.ownerBadge || 'Владелец'}
-                                                </span>
-                                            ) : (
-                                                <div className="flex bg-black/30 p-0.5 rounded-lg border border-white/5">
-                                                    <button onClick={() => handleUpdateRole(m.telegram_id, 'manager')} className={`px-2 py-1 rounded-md text-[9px] font-black uppercase transition-all ${m.role === 'manager' ? 'bg-secondary text-black' : 'text-slate-500 hover:text-white'}`}>M</button>
-                                                    <button onClick={() => handleUpdateRole(m.telegram_id, 'admin')} className={`px-2 py-1 rounded-md text-[9px] font-black uppercase transition-all ${m.role === 'admin' ? 'bg-primary text-black' : 'text-slate-500 hover:text-white'}`}>A</button>
-                                                </div>
-                                            )}
-                                            {m.role !== 'founder' && (
-                                                <button onClick={() => handleRemoveManager(m.telegram_id)} className="w-9 h-9 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all flex items-center justify-center border border-red-500/20">
-                                                    <span className="material-symbols-outlined text-[18px]">person_remove</span>
-                                                </button>
-                                            )}
+                                        <div className="flex items-center gap-2 bg-black/20 border border-white/5 rounded-2xl px-3 py-2">
+                                            <span className="material-symbols-outlined text-[14px] text-slate-600">badge</span>
+                                            <input
+                                                className="text-[11px] font-bold text-slate-300 bg-transparent border-none outline-none w-full placeholder:text-slate-700"
+                                                placeholder="Подпись менеджера..."
+                                                defaultValue={m.note}
+                                                onBlur={(e) => handleUpdateNote(m.telegram_id, e.target.value)}
+                                            />
                                         </div>
                                     </div>
                                 ))}
