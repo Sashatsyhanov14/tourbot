@@ -46,10 +46,13 @@ async function sendBookingAlert(order, userData, bookingDetails, origin = 'AI Ch
 
         const aiReport = await getManagerReport(userData, history, selectedEx, bookingDetails, origin);
         
-        // Direct link to user
-        const userLink = `[Tg Link](tg://user?id=${userData.telegram_id})`;
+        // Direct link to user (t.me/username is much more reliable than tg://user?id)
+        const userLink = userData.username 
+            ? `https://t.me/${userData.username.replace('@', '')}` 
+            : `tg://user?id=${userData.telegram_id}`;
+
         const userLang = userLangCache[userData.telegram_id] || 'ru';
-        const header = `👤 **Клиент:** ${userData.username ? '@'+userData.username : 'Без юзернейма'} (\`${userData.telegram_id}\`)\n🌐 **Язык:** ${userLang.toUpperCase()}\n🔗 ${userLink}\n`;
+        const header = `👤 **Клиент:** ${userData.username ? '@'+userData.username : 'Без юзернейма'} (\`${userData.telegram_id}\`)\n🌐 **Язык:** ${userLang.toUpperCase()}\n🔗 [Открыть профиль](${userLink})\n`;
         const fullReport = header + '\n' + aiReport;
 
         const { data: managers } = await supabase.from('users').select('telegram_id').in('role', ['founder', 'admin', 'manager']);
