@@ -24,7 +24,11 @@ Analysis logic:
 5. Client selects ONE specific excursion (names it, references it, says "I want this one") -> intent: "sale", set "excursion_id".
 6. If the client is just asking about a specific excursion but hasn't committed to a sale yet -> intent: "consultation", but STILL set "excursion_id" if you are 100% sure which one they mean.
 7. Multiple excursions match -> intent: "clarification", ask which one.
-8. Language: "lang_code" = detect ANY ISO 639-1 language code (ru, en, tr, de, pl, ar, fa, zh, es, fr etc.) based on client's text.
+8. LANGUAGE DETECTION (CRITICAL RULE — follow this priority order):
+   a) FIRST: Look at the user's LATEST message text and detect its language. This is the highest priority.
+   b) SECOND: If the latest message is ambiguous (e.g. just a number, emoji, or "ok"), look at the PREVIOUS user messages in history and use their language.
+   c) NEVER switch language mid-conversation unless the user clearly writes in a new language.
+   Output as "lang_code" using ISO 639-1 codes (ru, en, tr, de, pl, ar, fa, zh, es etc.).
 
 JSON format:
 {

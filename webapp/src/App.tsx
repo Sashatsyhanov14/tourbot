@@ -474,9 +474,20 @@ if (loading) return (
             </div>
           </div>
         );
-      case 'stats': return <AdminStats t={t} isAdmin={isAdmin} user={user} />;
+      case 'stats': return (
+        <div className="space-y-6 animate-in fade-in duration-500">
+          <AdminStats t={t} isAdmin={isAdmin} user={user} />
+          <div>
+            <div className="px-1 pb-3 flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary text-[18px]">list_alt</span>
+              <h3 className="text-sm font-black text-slate-200 uppercase tracking-wider">{t.tabRequests}</h3>
+            </div>
+            <AdminRequests t={t} />
+          </div>
+        </div>
+      );
+      case 'requests': return null; // merged into stats
       case 'excursions': return <AdminExcursions t={t} />;
-      case 'requests': return <AdminRequests t={t} />;
       case 'faq': return <AdminFaq t={t} />;
       case 'catalog': 
         const params = new URLSearchParams(window.location.search);
@@ -579,15 +590,6 @@ if (loading) return (
             >
               <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: activeTab === 'stats' ? "'FILL' 1" : "'FILL' 0" }}>dashboard</span>
               <span className="text-[8px] font-black uppercase tracking-wider mt-0.5">{t.tabStats}</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('requests')}
-              className={`flex flex-col items-center px-3 py-2 rounded-2xl transition-all ${
-                activeTab === 'requests' ? 'text-primary bg-primary/10' : 'text-slate-500 hover:text-slate-300'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: activeTab === 'requests' ? "'FILL' 1" : "'FILL' 0" }}>list_alt</span>
-              <span className="text-[8px] font-black uppercase tracking-wider mt-0.5">{t.tabRequests}</span>
             </button>
             {isAdmin && (
               <>
