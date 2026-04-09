@@ -84,9 +84,10 @@ module.exports = {
     },
 
     // === AGENT 4: THE MANAGER ALERTER ===
-    async getManagerReport(userData, history, excursion, bookingDetails) {
+    async getManagerReport(userData, history, excursion, bookingDetails, origin = 'AI Chat') {
         try {
             const context = `
+Источник: ${origin}
 Клиент: @${userData.username || 'unknown'} (ID: ${userData.telegram_id})
 История: ${history.slice(-5).map(h => `${h.role === 'user' ? 'Клиент' : 'Бот'}: ${h.content}`).join('\n')}
 Экскурсия: ${excursion ? excursion.title : 'Не выбрана'}
@@ -108,7 +109,7 @@ module.exports = {
 
             return response.choices[0].message.content;
         } catch (e) {
-            return `🚀 **НОВАЯ ЗАЯВКА!**\n\n📈 ${excursion?.title}\n👤 Клиент: @${userData.username}\n📞 WhatsApp: ${bookingDetails.phone}`;
+            return `🚀 **НОВАЯ ЗАЯВКА (${origin})!**\n\n📌 **Тур:** ${excursion?.title || 'Не выбрана'}\n👤 **Клиент:** @${userData.username || userData.telegram_id}\n📞 **WhatsApp:** ${bookingDetails.phone || '—'}\n\n⚠️ _Ошибка ИИ анализа, проверьте детали вручную._`;
         }
     },
 

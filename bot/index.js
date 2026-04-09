@@ -33,6 +33,54 @@ bot.use(async (ctx, next) => {
     return next();
 });
 
+// --- HELPER: Unified Booking Notification ---
+async function sendBookingAlert(order, userData, bookingDetails, origin = 'AI Chat') {
+    try {
+        const { data: history } = await getHistory(userData.telegram_id, 10);
+        const { data: excursions } = await getExcursions();
+        const selectedEx = excursions ? excursions.find(e => e.id === order.excursion_id) : null;
+
+        const aiReport = await getManagerReport(userData, history, selectedEx, bookingDetails, origin);
+        
+        // Direct link to user
+        const userLink = userData.username ? `@${userData.username}` : `[Профиль](tg://user?id=${userData.telegram_id})`;
+        const userLang = userLangCache[userData.telegram_id] || 'ru';
+        const header = `👤 **Клиент:** ${userData.username ? '@'+userData.username : 'Без юзернейма'} (\`${userData.telegram_id}\`)\n🌐 **Язык:** ${userLang.toUpperCase()}\n🔗 ${userLink}\n`;
+        const fullReport = header + '\n' + aiReport;
+
+        const { data: managers } = await supabase.from('users').select('telegram_id').in('role', ['founder', 'admin', 'manager']);
+        
+        const inlineKeyboard = Markup.inlineKeyboard([
+            [
+                Markup.button.callback('✅ Принять', `accept_req_${order.id}`),
+                Markup.button.callback('❌ Отклонить', `cancel_req_${order.id}`)
+            ],
+            [
+                Markup.button.callback('💰 Начислить бонусы', `bonus_req_${order.id}`)
+            ]
+        ]);
+
+        if (managers && managers.length > 0) {
+            for (const m of managers) {
+                try {
+                    await bot.telegram.sendMessage(m.telegram_id, fullReport, { 
+                        parse_mode: 'Markdown',
+                        ...inlineKeyboard
+                    });
+                } catch (e) {
+                    try {
+                        await bot.telegram.sendMessage(m.telegram_id, fullReport.replace(/[\*_`\[\]()]/g, ''), inlineKeyboard);
+                    } catch (e2) { console.error(`[MANAGER_NOTIFY_ERROR] to ${m.telegram_id}: ${e2.message}`); }
+                }
+            }
+        } else {
+            console.warn('[sendBookingAlert] No managers found in DB.');
+        }
+    } catch (err) {
+        console.error('[sendBookingAlert] Fatal Error:', err.message);
+    }
+}
+
 // --- MANAGER ACTIONS ---
 bot.action(/^accept_req_(.+)$/, async (ctx) => {
     const requestId = ctx.match[1];
@@ -150,7 +198,7 @@ bot.action(/^start_chat_book_(.+)$/, async (ctx) => {
 
     userStates.set(telegramId, { step: 'name', excursionId, data: {} });
     const lang = userLangCache[telegramId] || 'ru';
-    const namePromptRu = `Оформим бронь здесь! 😍\n\n👤 Как к вам можно обращаться? Напишите, пожалуйста, ваше ФИО.`;
+    const namePromptRu = `С радостью подготовлю для вас бронь! 😍\n\n👤 Как к вам можно обращаться? Напишите, пожалуйста, ваше ФИО.`;
     const namePrompt = await getLocalizedText(lang, namePromptRu);
     
     await ctx.answerCbQuery();
@@ -217,7 +265,7 @@ bot.start(async (ctx) => {
         const lang = ctx.from.language_code || 'ru';
         userLangCache[telegramId] = lang;
 
-        const welcomeRuPart1 = `Привет, ${username}! 🌍\n\nЯ твой персональный гид — помогу выбрать лучшую экскурсию, расскажу о маршрутах и отвечу на любые вопросы.\n\nОткрой каталог ниже или просто напиши: какой город тебя интересует? 🗺️`;
+        const welcomeRuPart1 = `Добро пожаловать в солнечную Турцию! ☀️\n\nЯ твой персональный гид и ассистент по отдыху. Помогу выбрать лучшую экскурсию, расскажу о самых красивых маршрутах и отвечу на любые вопросы.\n\nДавай начнем! Открой каталог ниже или просто напиши: какой город или развлечение тебя интересует? 🗺️`;
 
         const welcomeText1 = await getLocalizedText(lang, welcomeRuPart1);
         const webappBtnRu = '🎒 Открыть Каталог';
@@ -240,14 +288,14 @@ bot.start(async (ctx) => {
         // Задержанное 2-е сообщение
         setTimeout(async () => {
             try {
-                const welcomeRuPart2 = `📍 Мы работаем в нескольких городах России: Москва, Санкт-Петербург, Сочи, Казань и другие.\n\nПросто напиши название города — и я покажу, что у нас есть! Или открой каталог и выбери экскурсию прямо там 👆`;
+                const welcomeRuPart2 = `📍 Мы работаем во всех популярных городах: Стамбул, Аланья, Анталья, Кемер, Сиде, Белек, Мармарис, Фетхие и Каппадокия.\n\nПросто напиши название города — и я покажу лучшие варианты! Или выбери экскурсию в каталоге прямо сейчас 👆`;
                 const welcomeText2 = await getLocalizedText(lang, welcomeRuPart2);
                 await bot.telegram.sendMessage(telegramId, welcomeText2);
                 console.log(`[START] Welcome Part 2 sent to ${username}`);
             } catch (err) {
                 console.error('[START Part 2] Error:', err.message);
             }
-        }, 2500);
+        }, 2200);
 
     } catch (err) {
         console.error('[START] Fatal Error:', err.message);
@@ -260,7 +308,7 @@ bot.command('ref', async (ctx) => {
     const lang = userLangCache[telegramId] || 'ru';
     const refLink = `https://t.me/${ctx.botInfo.username}?start=${telegramId}`;
 
-    const textRu = `🎁 Твоя реферальная ссылка:\n\n${refLink}\n\nТвой промокод: \`${telegramId}\`\n\nПриглашай друзей и получай бонусы!`;
+    const textRu = `🎁 Твоя персональная ссылка для друзей:\n\n${refLink}\n\nТвой промокод: \`${telegramId}\`\n\nДелись ею с друзьями! За каждую забронированную ими экскурсию ты получишь бонус $1 на свой баланс. Давай открывать Турцию вместе! 🌍`;
     const text = await getLocalizedText(lang, textRu);
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(refLink)}&margin=10`;
 
@@ -330,45 +378,16 @@ async function handleWebAppData(ctx, dataStr) {
                 return ctx.reply('❌ Ошибка при сохранении заявки. Попробуйте снова.');
             }
 
-            // Notify Managers
-            const reportRu = `👤 *Клиент:* @${ctx.from.username || 'unknown'} (\`${telegramId}\`)\n🆕 *НОВАЯ ЗАЯВКА ИЗ КАТАЛОГА!*\n\n📍 *Тур:* ${excursionTitle}\n👤 *ФИО:* ${fullName}\n📱 *Телефон:* \`${phone}\`\n🗓️ *Дата:* ${tourDate}\n\n🚀 _Заявка оформлена через Mini App!_`;
-            const report = await getLocalizedText('ru', reportRu);
-
-            const { data: managers } = await supabase.from('users').select('telegram_id').in('role', ['founder', 'admin', 'manager']);
-            if (managers && managers.length > 0) {
-                for (const m of managers) {
-                    try { 
-                        await bot.telegram.sendMessage(m.telegram_id, report, { 
-                            parse_mode: 'Markdown',
-                            ...Markup.inlineKeyboard([
-                                [
-                                    Markup.button.callback('✅ Принять', `accept_req_${orderId}`),
-                                    Markup.button.callback('❌ Отклонить', `cancel_req_${orderId}`)
-                                ],
-                                [
-                                    Markup.button.callback('💰 Начислить бонусы', `bonus_req_${orderId}`)
-                                ]
-                            ])
-                        }); 
-                    } catch (e) {
-                        try {
-                            await bot.telegram.sendMessage(m.telegram_id, report.replace(/[\*_`\[\]()]/g, ''), {
-                                ...Markup.inlineKeyboard([
-                                    [
-                                        Markup.button.callback('✅ Принять', `accept_req_${orderId}`),
-                                        Markup.button.callback('❌ Отклонить', `cancel_req_${orderId}`)
-                                    ],
-                                    [
-                                        Markup.button.callback('💰 Начислить бонусы', `bonus_req_${orderId}`)
-                                    ]
-                                ])
-                            });
-                        } catch (e2) { console.error(`[MANAGER_NOTIFY_ERROR] to ${m.telegram_id}: ${e2.message}`); }
-                    }
-                }
-            } else {
-                console.warn('[handleWebAppData] No managers found to notify.');
-            }
+            // Notify Managers using unified helper
+            await sendBookingAlert({
+                id: orderId,
+                excursion_id: excursionId
+            }, ctx.from, {
+                fullName: fullName,
+                phone: phone,
+                tourDate: tourDate,
+                hotelName: 'WebApp Catalog'
+            }, 'Mini App Catalog');
 
             const successRu = '✅ *Заявка отправлена!*\n\nНаш менеджер свяжется с вами в ближайшее время. Спасибо!';
             const successMsg = await getLocalizedText(lang, successRu);
@@ -600,21 +619,21 @@ bot.on('text', async (ctx) => {
             if (state.step === 'name') {
                 state.data.fullName = userText;
                 state.step = 'date';
-                const msg = await getLocalizedText(lang, '🗓️ Отлично! Теперь напишите желаемую дату (например: завтра, 25 мая, или конкретный период):');
+                const msg = await getLocalizedText(lang, '🗓️ Отлично! Теперь напишите желаемую дату поездки (например: завтра, 25 мая, или удобный вам период):');
                 return ctx.reply(msg, Markup.inlineKeyboard([cancelBtn]));
             }
 
             if (state.step === 'date') {
                 state.data.tourDate = userText;
                 state.step = 'hotel';
-                const msg = await getLocalizedText(lang, '🏨 Понял. Напишите ваш город и название отеля (или адрес, откуда вас забрать):');
+                const msg = await getLocalizedText(lang, '🏨 Принято. Напишите, пожалуйста, в каком отеле вы остановились (или адрес), чтобы мы знали, откуда вас забрать:');
                 return ctx.reply(msg, Markup.inlineKeyboard([cancelBtn]));
             }
 
             if (state.step === 'hotel') {
                 state.data.hotelName = userText;
                 state.step = 'phone';
-                const msg = await getLocalizedText(lang, '📞 Почти готово! Укажите номер WhatsApp для связи с оператором:');
+                const msg = await getLocalizedText(lang, '📲 И последний штрих! Укажите ваш номер WhatsApp — менеджер свяжется для подтверждения и пришлет все детали:');
                 return ctx.reply(msg, Markup.inlineKeyboard([cancelBtn]));
             }
 
@@ -639,12 +658,9 @@ bot.on('text', async (ctx) => {
                 user?.referrer_id || null
             );
 
-            const { data: history } = await getHistory(telegramId, 10);
-            const aiReport = await getManagerReport(user, history, selectedEx, state.data);
-
             userStates.delete(telegramId);
 
-            const thanksRu = `✅ Спасибо! Заявка отправлена. Наш оператор свяжется с вами по номеру ${userText} в ближайшее время. 🙌`;
+            const thanksRu = `Все готово! ✨ Ваша заявка отправлена. Наш оператор свяжется с вами по номеру ${userText} в самое ближайшее время. Приятного вам отдыха! 🙌`;
             const thanksMsg = await getLocalizedText(lang, thanksRu);
             await ctx.reply(thanksMsg);
 
@@ -659,41 +675,8 @@ bot.on('text', async (ctx) => {
                 }
             }, 2 * 60 * 1000); // 2 minutes
 
-            // Уведомление менеджерам
-            const { data: managers } = await supabase.from('users').select('telegram_id').in('role', ['founder', 'admin', 'manager']);
-            if (managers) {
-                for (const m of managers) {
-                    try {
-                        const meta = `👤 *Клиент:* @${user.username || 'unknown'} (\`${telegramId}\`)\n`;
-                        await bot.telegram.sendMessage(m.telegram_id, meta + aiReport, {
-                            parse_mode: 'Markdown',
-                            ...Markup.inlineKeyboard([
-                                [
-                                    Markup.button.callback('✅ Принять', `accept_req_${order.id}`),
-                                    Markup.button.callback('❌ Отклонить', `cancel_req_${order.id}`)
-                                ],
-                                [
-                                    Markup.button.callback('💰 Начислить бонусы', `bonus_req_${order.id}`)
-                                ]
-                            ])
-                        });
-                    } catch (e) {
-                        try {
-                            await bot.telegram.sendMessage(m.telegram_id, aiReport.replace(/[\*_`\[\]()]/g, ''), {
-                                ...Markup.inlineKeyboard([
-                                    [
-                                        Markup.button.callback('✅ Принять', `accept_req_${order.id}`),
-                                        Markup.button.callback('❌ Отклонить', `cancel_req_${order.id}`)
-                                    ],
-                                    [
-                                        Markup.button.callback('💰 Начислить бонусы', `bonus_req_${order.id}`)
-                                    ]
-                                ])
-                            });
-                        } catch (e2) { console.error('Manager notify error:', e2.message); }
-                    }
-                }
-            }
+            // Уведомление менеджерам через единый хелпер
+            await sendBookingAlert(order, user, state.data, 'AI Voice/Chat Bot');
             return;
             }
         }
