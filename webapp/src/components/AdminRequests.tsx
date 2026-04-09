@@ -107,7 +107,9 @@ const AdminRequests: React.FC<{ t?: any }> = () => {
                                         <div className="flex-1 min-w-0">
                                             <h4 className="font-black text-white text-lg leading-tight group-hover:text-primary transition-colors">{req.excursion_title}</h4>
                                             <div className="flex items-center gap-2 mt-1">
-                                                <span className="text-[10px] font-bold text-slate-500">@{req.users?.username || 'user'}</span>
+                                                <span className="text-[10px] font-bold text-slate-500">
+                                                    {req.users?.username ? (req.users.username.includes(' ') || req.users.username !== req.users.username.toLowerCase() ? req.users.username : `@${req.users.username}`) : 'user'}
+                                                </span>
                                                 <span className="w-1 h-1 bg-slate-700 rounded-full" />
                                                 <span className="text-[10px] font-medium text-slate-400">{req.full_name}</span>
                                             </div>

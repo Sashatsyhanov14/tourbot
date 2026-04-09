@@ -51,8 +51,13 @@ async function sendBookingAlert(order, userData, bookingDetails, origin = 'AI Ch
             ? `https://t.me/${userData.username.replace('@', '')}` 
             : `tg://user?id=${userData.telegram_id}`;
 
+        const isRealUsername = userData.username && !userData.username.includes(' ') && userData.username === userData.username.toLowerCase();
+        const clientDisplayName = userData.username 
+            ? (isRealUsername ? `@${userData.username}` : userData.username) 
+            : (bookingDetails.fullName || 'Без юзернейма');
+
         const userLang = userLangCache[userData.telegram_id] || 'ru';
-        const header = `👤 **Клиент:** ${userData.username ? '@'+userData.username : 'Без юзернейма'} (\`${userData.telegram_id}\`)\n🌐 **Язык:** ${userLang.toUpperCase()}\n🔗 [Открыть профиль](${userLink})\n`;
+        const header = `👤 **Клиент:** ${clientDisplayName} (\`${userData.telegram_id}\`)\n🌐 **Язык:** ${userLang.toUpperCase()}\n🔗 [Открыть профиль](${userLink})\n`;
         const fullReport = header + '\n' + aiReport;
 
         const { data: managers } = await supabase.from('users').select('telegram_id').in('role', ['founder', 'admin', 'manager']);
@@ -190,7 +195,17 @@ bot.action(/^start_chat_book_(.+)$/, async (ctx) => {
 });
 
 async function startBookingStepper(ctx, telegramId, excursionId) {
-    userStates.set(telegramId, { step: 'name', excursionId, data: {} });
+    const { data: excursions } = await getExcursions();
+    const ex = excursions?.find(e => e.id === excursionId);
+    
+    userStates.set(telegramId, { 
+        step: 'name', 
+        excursionId, 
+        data: {
+            excursionTitle: ex?.title || 'Unknown',
+            price_usd: ex?.price_usd || 0
+        } 
+    });
     const lang = userLangCache[telegramId] || 'ru';
     const namePromptRu = `С радостью подготовлю для вас бронь! 😍\n\n👤 Как к вам можно обращаться? Напишите, пожалуйста, ваше ФИО.`;
     const namePrompt = await getLocalizedText(lang, namePromptRu);
@@ -212,11 +227,12 @@ bot.action('cancel_stepper', async (ctx) => {
 // --- CLIENT FLOW ---
 bot.start(async (ctx) => {
     const telegramId = ctx.from.id;
-    const username = ctx.from.username || ctx.from.first_name;
+    const realUsername = ctx.from.username; // handle
+    const displayName = ctx.from.first_name || (realUsername ? `@${realUsername}` : `User ${telegramId}`);
     const startPayload = ctx.payload;
 
     try {
-        console.log(`[START] Triggered for ${username} (${telegramId}), payload: ${startPayload}`);
+        console.log(`[START] Triggered for ${displayName} (${telegramId}), payload: ${startPayload}`);
 
         // --- QR DEEP LINK from WebApp button ---
         if (startPayload && startPayload.startsWith('getqr_')) {
@@ -242,7 +258,7 @@ bot.start(async (ctx) => {
             const referrerId = startPayload && !isNaN(startPayload) ? parseInt(startPayload) : null;
             const { data: newUser } = await createUser({
                 telegram_id: telegramId,
-                username: username,
+                username: realUsername || displayName,
                 role: 'user',
                 referrer_id: (referrerId && referrerId !== telegramId) ? referrerId : null,
                 balance: 0

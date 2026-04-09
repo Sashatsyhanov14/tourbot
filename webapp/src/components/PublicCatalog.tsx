@@ -38,6 +38,7 @@ export default function PublicCatalog({ t, lang, initialExcursionId }: { t: any,
     const [bookingEx, setBookingEx] = useState<Excursion | null>(null);
     const [selectedEx, setSelectedEx] = useState<Excursion | null>(null);
     const [formData, setFormData] = useState({ name: '', phone: '', date: '', hotel: '' });
+    const [submitting, setSubmitting] = useState(false);
 
     const tg = window.Telegram?.WebApp;
 
@@ -86,6 +87,7 @@ export default function PublicCatalog({ t, lang, initialExcursionId }: { t: any,
             hotelName: formData.hotel
         };
 
+        setSubmitting(true);
         try {
             const response = await fetch('/api/book', {
                 method: 'POST',
@@ -106,6 +108,8 @@ export default function PublicCatalog({ t, lang, initialExcursionId }: { t: any,
         } catch (err) {
             console.error('Booking API Error:', err);
             tg?.showAlert('❌ Ошибка сети. Проверьте интернет-соединение.');
+        } finally {
+            setSubmitting(false);
         }
         
         setBookingEx(null);
@@ -394,9 +398,12 @@ export default function PublicCatalog({ t, lang, initialExcursionId }: { t: any,
                             </button>
                             <button
                                 onClick={handleBook}
-                                className="flex-1 py-4 bg-primary text-on-primary rounded-2xl text-xs font-black uppercase tracking-widest shadow-[0_8px_25px_rgba(208,188,255,0.2)] active:scale-95 transition-all"
+                                disabled={submitting}
+                                className={`flex-1 py-4 rounded-2xl text-xs font-black uppercase tracking-widest shadow-[0_8px_25px_rgba(208,188,255,0.2)] active:scale-95 transition-all ${submitting ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-primary text-on-primary'}`}
                             >
-                                {lang === 'ru' ? 'Отправить' : 'Send'}
+                                {submitting 
+                                    ? (lang === 'ru' ? 'Отправка...' : 'Sending...') 
+                                    : (lang === 'ru' ? 'Отправить' : 'Send')}
                             </button>
                         </div>
                     </div>

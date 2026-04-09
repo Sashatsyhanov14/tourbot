@@ -404,7 +404,9 @@ if (loading) return (
                           <span className="text-[11px] font-black text-primary">#{idx + 1}</span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-slate-200 truncate">@{ref.username}</p>
+                          <p className="text-sm font-bold text-slate-200 truncate">
+                            {ref.username ? (ref.username.includes(' ') || ref.username !== ref.username.toLowerCase() ? ref.username : `@${ref.username}`) : 'user'}
+                          </p>
                           <p className="text-[10px] text-slate-500 font-mono">{ref.telegram_id}</p>
                         </div>
                         <div className="flex items-center gap-3 text-right">
