@@ -351,20 +351,20 @@ async function handleWebAppData(ctx, dataStr) {
                 }
             }
 
-            // Create request in DB
-            const orderId = crypto.randomUUID();
-            const { error: insErr } = await supabase.from('requests').insert([{
-                id: orderId,
-                user_id: telegramId,
-                excursion_id: excursionId,
-                excursion_title: excursionTitle || 'Unknown Excursion',
-                full_name: fullName,
-                tour_date: tourDate,
-                phone: phone,
-                price_usd: priceRub || data.price_usd || 0,
-                status: 'from_webapp',
-                created_at: new Date().toISOString()
-            }]);
+            const { data: user } = await getUser(telegramId);
+
+            // Create request using the unified helper
+            const { data: order, error: insErr } = await createRequest(
+                telegramId,
+                excursionId,
+                excursionTitle || 'Unknown Excursion',
+                fullName,
+                tourDate,
+                'Mini App Catalog', // hotel_name placeholder for webapp
+                priceRub || data.price_usd || 0,
+                phone,
+                user?.referrer_id || null
+            );
 
             if (insErr) {
                 console.error('[BOOKING_INSERT_ERROR]', insErr);
@@ -373,7 +373,7 @@ async function handleWebAppData(ctx, dataStr) {
 
             // Notify Managers using unified helper
             await sendBookingAlert({
-                id: orderId,
+                id: order.id,
                 excursion_id: excursionId
             }, ctx.from, {
                 fullName: fullName,
