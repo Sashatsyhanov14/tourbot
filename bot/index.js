@@ -336,24 +336,30 @@ async function handleWebAppData(ctx, dataStr) {
             return;
         }
 
-        console.log(`[HANDLE_DATA] Type: ${data.type}`);
+        console.log(`[HANDLE_DATA] Type: ${data.type}`, data);
         
         // --- Quick Booking from Catalog ---
         if (data.type === 'quick_book') {
-            let { excursionId, excursionTitle, fullName, phone, tourDate, priceRub } = data;
+            console.log('[BOOKING_DEBUG] Received quick_book data:', data);
+            let { excursionId, excursionTitle, fullName, phone, tourDate, priceUsd } = data;
             
             // If title is missing (simplified payload), fetch from DB
             if (!excursionTitle && excursionId) {
-                const { data: ex } = await supabase.from('excursions').select('title, price_usd').eq('id', excursionId).single();
+                console.log('[BOOKING_DEBUG] Fetching excursion details for ID:', excursionId);
+                const { data: ex, error: exErr } = await supabase.from('excursions').select('title, price_usd').eq('id', excursionId).single();
                 if (ex) {
                     excursionTitle = ex.title;
                     priceUsd = ex.price_usd;
+                } else {
+                    console.error('[BOOKING_DEBUG] Excursion not found or error:', exErr);
                 }
             }
 
             const { data: user } = await getUser(telegramId);
+            console.log('[BOOKING_DEBUG] User found:', !!user, telegramId);
 
             // Create request using the unified helper
+            console.log('[BOOKING_DEBUG] Creating request in Supabase...');
             const { data: order, error: insErr } = await createRequest(
                 telegramId,
                 excursionId,
@@ -367,20 +373,25 @@ async function handleWebAppData(ctx, dataStr) {
             );
 
             if (insErr) {
-                console.error('[BOOKING_INSERT_ERROR]', insErr);
-                return ctx.reply('❌ Ошибка при сохранении заявки. Попробуйте снова.');
+                console.error('[BOOKING_INSERT_ERROR] Fatal:', insErr);
+                return ctx.reply('❌ Ошибка при сохранении заявки в базу. Пожалуйста, сообщите администратору.');
             }
 
+            console.log('[BOOKING_DEBUG] Request created successfully, ID:', order?.id);
+
             // Notify Managers using unified helper
-            await sendBookingAlert({
-                id: order.id,
-                excursion_id: excursionId
-            }, ctx.from, {
-                fullName: fullName,
-                phone: phone,
-                tourDate: tourDate,
-                hotelName: 'WebApp Catalog'
-            }, 'Mini App Catalog');
+            try {
+                console.log('[BOOKING_DEBUG] Sending alert to managers...');
+                await sendBookingAlert(order, user || { telegram_id: telegramId, username: ctx.from?.username }, {
+                    fullName: fullName,
+                    phone: phone,
+                    tourDate: tourDate,
+                    hotelName: 'WebApp Catalog'
+                }, 'Mini App Catalog');
+                console.log('[BOOKING_DEBUG] Alerts sent!');
+            } catch (alertErr) {
+                console.error('[BOOKING_DEBUG] Alert failed:', alertErr.message);
+            }
 
             const successRu = '✅ *Заявка отправлена!*\n\nНаш менеджер свяжется с вами в ближайшее время. Спасибо!';
             const successMsg = await getLocalizedText(lang, successRu);
