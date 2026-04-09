@@ -16,32 +16,6 @@ const AdminStats: React.FC<{ t: any, isAdmin?: boolean, user?: any }> = ({ t, is
     const [loading, setLoading] = useState(true);
     const [payoutMsg, setPayoutMsg] = useState<{ [id: number]: string }>({});
 
-    const getFlag = (searchStr: string) => {
-        if (!searchStr) return '';
-        const s = searchStr.toLowerCase();
-        if (s.includes('turk') || s.includes('турц')) return '🇹🇷';
-        if (s.includes('viet') || s.includes('вьет')) return '🇻🇳';
-        if (s.includes('thai') || s.includes('таи')) return '🇹🇭';
-        if (s.includes('indo') || s.includes('индо')) return '🇮🇩';
-        if (s.includes('kazakh') || s.includes('казах')) return '🇰🇿';
-        if (s.includes('azer') || s.includes('азер')) return '🇦🇿';
-        if (s.includes('georg') || s.includes('груз')) return '🇬🇪';
-        if (s.includes('usa') || s.includes('сша')) return '🇺🇸';
-        if (s.includes('germ') || s.includes('герм')) return '🇩🇪';
-        if (s.includes('egypt') || s.includes('егип')) return '🇪🇬';
-        if (s.includes('china') || s.includes('кита')) return '🇨🇳';
-        if (s.includes('korea') || s.includes('коре')) return '🇰🇷';
-        if (s.includes('japan') || s.includes('япон')) return '🇯🇵';
-        if (s.includes('monten') || s.includes('черног')) return '🇲🇪';
-        if (s.includes('serb') || s.includes('серб')) return '🇷🇸';
-        if (s.includes('euro') || s.includes('евро')) return '🇪🇺';
-        if (s.includes('isra') || s.includes('изра')) return '🇮🇱';
-        if (s.includes('saudi') || s.includes('сауд')) return '🇸🇦';
-        if (s.includes('dubai') || s.includes('uae') || s.includes('оаэ') || s.includes('emir')) return '🇦🇪';
-        if (s.includes('russia') || s.includes('россия') || s.includes('рф') || s === 'ru' || s === 'rus') return '🇷🇺';
-        if (s.includes('ukraine') || s.includes('украин')) return '🇺🇦';
-        return '';
-    };
 
     useEffect(() => { fetchAll(); }, []);
 
@@ -244,107 +218,101 @@ const AdminStats: React.FC<{ t: any, isAdmin?: boolean, user?: any }> = ({ t, is
             {/* ── SECTION 3: Referral Analytics + Payouts ── */}
             {referralRows.length > 0 && (
                 <div className="bg-[#1a1a1d] rounded-3xl border border-white/5 overflow-hidden">
-                    <div className="px-5 py-4 border-b border-white/5 flex items-center gap-2">
-                        <span className="material-symbols-outlined text-primary text-[18px]">payments</span>
-                        <h3 className="text-sm font-bold text-slate-200">Реферальная аналитика и выплаты</h3>
+                    <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <span className="material-symbols-outlined text-primary text-[18px]">payments</span>
+                            <h3 className="text-sm font-bold text-slate-200">Реферальная аналитика</h3>
+                        </div>
+                        <span className="text-[10px] text-slate-500 font-bold uppercase">{referralRows.length} партнёров</span>
                     </div>
                     <div className="divide-y divide-white/5">
                         {referralRows.map(ref => (
-                            <div key={ref.telegram_id} className="p-4 space-y-3">
-                                <div className="flex items-start gap-4">
-                                    <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center flex-shrink-0 border border-primary/20">
-                                        <span className="material-symbols-outlined text-primary text-[24px]">person</span>
+                            <div key={ref.telegram_id} className="p-3 hover:bg-white/[0.01] transition-all">
+                                {/* Compact Row: User info + Balance + Payout button */}
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 border border-primary/20">
+                                        <span className="material-symbols-outlined text-primary text-[16px]">person</span>
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <p className="text-base font-black text-white truncate">@{ref.username}</p>
-                                            <span className="bg-white/5 text-[9px] font-mono text-slate-500 px-2 py-0.5 rounded-md border border-white/5">{ref.telegram_id}</span>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-xs font-black text-white truncate">@{ref.username}</p>
+                                            <span className="text-[8px] font-mono text-slate-600">ID: {ref.telegram_id}</span>
                                         </div>
-                                        <div className="relative group max-w-[200px]">
-                                            <div className="absolute inset-y-0 left-0 w-1 bg-primary rounded-full opacity-0 group-focus-within:opacity-100 transition-all blur-[2px]" />
-                                            <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-xl px-3 py-1.5 hover:bg-primary/10 transition-all">
-                                                <span className="material-symbols-outlined text-[14px] text-primary/60">label</span>
-                                                <input
-                                                    className="text-[11px] font-bold text-primary bg-transparent border-none outline-none w-full placeholder:text-primary/30"
-                                                    placeholder="Подпись партнёра..."
-                                                    defaultValue={ref.note}
-                                                    onBlur={(e) => handleUpdateNote(ref.telegram_id, e.target.value)}
-                                                />
-                                            </div>
-                                        </div>
+                                        <input
+                                            className="text-[9px] font-bold text-primary/60 bg-transparent border-none outline-none w-full placeholder:text-primary/20 hover:text-primary/100 transition-all"
+                                            placeholder="Добавить подпись..."
+                                            defaultValue={ref.note}
+                                            onBlur={(e) => handleUpdateNote(ref.telegram_id, e.target.value)}
+                                        />
                                     </div>
-                                    <div className="text-right">
-                                        <p className="text-xl font-black text-primary tracking-tighter">${ref.balance}</p>
-                                        <p className="text-[9px] text-slate-500 uppercase font-black tracking-widest">баланс</p>
+                                    <div className="flex items-center gap-2">
+                                        <div className="text-right">
+                                            <p className="text-sm font-black text-primary">${ref.balance}</p>
+                                        </div>
+                                        <button
+                                            onClick={() => handlePayout(ref)}
+                                            disabled={ref.balance <= 0}
+                                            className="px-3 py-1.5 bg-green-500/20 text-green-400 border border-green-500/30 rounded-lg text-[9px] font-black uppercase tracking-wider active:scale-95 transition-all disabled:opacity-20"
+                                        >
+                                            ВЫПЛАТИТЬ
+                                        </button>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {[
-                                        { label: 'Привёл', value: ref.invitedCount, color: 'text-blue-400' },
-                                        { label: 'Заявок', value: ref.requestCount, color: 'text-green-400' },
-                                        { label: 'Выручка', value: `$${ref.revenue}`, color: 'text-primary' },
-                                    ].map(s => (
-                                        <div key={s.label} className="bg-black/20 p-2 rounded-xl text-center">
-                                            <p className={`text-base font-black ${s.color}`}>{s.value}</p>
-                                            <p className="text-[9px] text-slate-600 uppercase">{s.label}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={() => handlePayout(ref)}
-                                        disabled={ref.balance <= 0}
-                                        className="flex-1 py-2.5 bg-green-500/20 text-green-400 border border-green-500/30 rounded-xl text-xs font-black uppercase tracking-wider active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                                    >
-                                        💸 Выплатить ${ref.balance}
-                                    </button>
+
+                                {/* Compact Stats Sub-row */}
+                                <div className="mt-2 flex items-center gap-4 pl-11">
+                                    <div className="flex items-center gap-1">
+                                        <p className="text-[10px] font-black text-blue-400">{ref.invitedCount}</p>
+                                        <p className="text-[8px] text-slate-600 uppercase">привёл</p>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <p className="text-[10px] font-black text-green-400">{ref.requestCount}</p>
+                                        <p className="text-[8px] text-slate-600 uppercase">заявок</p>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <p className="text-[10px] font-black text-primary">${ref.revenue}</p>
+                                        <p className="text-[8px] text-slate-600 uppercase">оборот</p>
+                                    </div>
                                     {ref.totalPaid > 0 && (
-                                        <div className="px-3 py-2.5 bg-black/20 rounded-xl text-center min-w-[80px]">
-                                            <p className="text-[10px] font-black text-slate-400">${ref.totalPaid.toFixed(0)}</p>
-                                            <p className="text-[8px] text-slate-600 uppercase">выплачено</p>
+                                        <div className="ml-auto text-[8px] text-slate-600 uppercase flex items-center gap-1">
+                                            <span className="material-symbols-outlined text-[10px]">check_circle</span>
+                                            Выплачено: <span className="text-slate-400 font-bold">${ref.totalPaid.toFixed(0)}</span>
                                         </div>
                                     )}
                                 </div>
-                                {payoutMsg[ref.telegram_id] && (
-                                    <p className="text-xs text-green-400 bg-green-500/10 border border-green-500/20 p-2 rounded-xl">{payoutMsg[ref.telegram_id]}</p>
-                                )}
-                                {ref.requests && ref.requests.length > 0 && (
-                                    <details className="text-[10px]">
-                                        <summary className="text-slate-400 cursor-pointer hover:text-slate-200 font-bold uppercase tracking-wider flex items-center gap-1">
-                                            <span className="material-symbols-outlined text-[14px]">receipt_long</span>
-                                            Заявки ({ref.requests.length})
-                                        </summary>
-                                        <div className="mt-2 space-y-1.5 pl-2">
-                                            {ref.requests.map((r: any, i: number) => (
-                                                <div key={i} className="bg-black/30 p-2 rounded-xl flex items-center gap-2">
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-slate-200 font-bold truncate flex items-center gap-1.5">
-                                                            <span>{getFlag(r.excursion_title || '') || '📍'}</span>
-                                                            {r.excursion_title || '—'}
-                                                        </p>
-                                                        <p className="text-slate-500">{r.full_name || '—'} · {r.tour_date || '—'}</p>
+
+                                {/* Compact Details Alerts/Expanders */}
+                                <div className="mt-2 pl-11 flex gap-2">
+                                    {ref.requests && ref.requests.length > 0 && (
+                                        <details className="text-[8px]">
+                                            <summary className="text-slate-500 cursor-pointer hover:text-slate-300 font-bold uppercase tracking-widest flex items-center gap-1 outline-none">
+                                                Заявки ({ref.requests.length})
+                                            </summary>
+                                            <div className="mt-1 space-y-1">
+                                                {ref.requests.slice(0, 5).map((r: any, i: number) => (
+                                                    <div key={i} className="flex items-center justify-between py-1 border-b border-white/5 opacity-80">
+                                                        <span className="truncate max-w-[120px]">{r.excursion_title}</span>
+                                                        <span className="text-primary font-bold">${r.price_usd}</span>
                                                     </div>
-                                                    <div className="text-right flex-shrink-0">
-                                                        <p className="text-primary font-black">${r.price_usd || 0}</p>
-                                                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${r.status === 'accepted' ? 'bg-green-500/20 text-green-400' : r.status === 'new' ? 'bg-blue-500/20 text-blue-400' : 'bg-white/5 text-slate-500'}`}>
-                                                            {r.status === 'accepted' ? '✓' : r.status === 'new' ? 'новая' : r.status}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </details>
-                                )}
-                                {ref.payouts.length > 0 && (
-                                    <details className="text-[10px]">
-                                        <summary className="text-slate-500 cursor-pointer hover:text-slate-300 font-bold uppercase tracking-wider">История выплат ({ref.payouts.length})</summary>
-                                        <div className="mt-2 space-y-1 pl-2">
-                                            {ref.payouts.map((p: any, i: number) => (
-                                                <p key={i} className="text-slate-400 font-mono">{p.content.replace(PAYOUT_PREFIX, '').trim()}</p>
-                                            ))}
-                                        </div>
-                                    </details>
-                                )}
+                                                ))}
+                                                {ref.requests.length > 5 && <p className="text-slate-600">...и ещё {ref.requests.length - 5}</p>}
+                                            </div>
+                                        </details>
+                                    )}
+                                    {ref.payouts.length > 0 && (
+                                        <details className="text-[8px]">
+                                            <summary className="text-slate-600 cursor-pointer hover:text-slate-400 font-bold uppercase tracking-widest outline-none">История</summary>
+                                            <div className="mt-1 opacity-60 italic">
+                                                {ref.payouts.map((p: any, i: number) => (
+                                                    <p key={i}>{p.content.replace(PAYOUT_PREFIX, '').trim()}</p>
+                                                ))}
+                                            </div>
+                                        </details>
+                                    )}
+                                    {payoutMsg[ref.telegram_id] && (
+                                        <span className="text-green-500 font-bold uppercase tracking-tighter animate-pulse">{payoutMsg[ref.telegram_id]}</span>
+                                    )}
+                                </div>
                             </div>
                         ))}
                     </div>
