@@ -265,17 +265,13 @@ bot.start(async (ctx) => {
         const qrBtnRu = '📲 Мой QR / Промокод';
         const webappBtn = await getLocalizedText(lang, webappBtnRu);
         const qrBtn = await getLocalizedText(lang, qrBtnRu);
-        // Cache translated QR button text for detection later
-        userQrBtnCache[telegramId] = qrBtn;
-
-        // Remove any existing keyboard
+        // Remove any existing keyboard as requested by user
         try {
             const k = await ctx.reply('…', Markup.removeKeyboard());
             await bot.telegram.deleteMessage(ctx.chat.id, k.message_id);
         } catch (e) { }
-
+        
         await ctx.reply(welcomeText1);
-
         console.log(`[START] Welcome Part 1 sent to ${username}`);
 
         // Задержанное 2-е сообщение
@@ -823,6 +819,7 @@ bot.on('text', async (ctx) => {
         }
 
         await saveMessage(telegramId, 'assistant', finalResponse);
+        
         try {
             await ctx.reply(finalResponse, { parse_mode: 'Markdown' });
         } catch (err) {
@@ -873,3 +870,4 @@ process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
 
 module.exports = bot;
+module.exports.handleWebAppData = handleWebAppData;

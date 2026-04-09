@@ -65,9 +65,15 @@ export default function PublicCatalog({ t, lang, initialExcursionId }: { t: any,
         setLoading(false);
     };
 
-    const handleBook = () => {
+    const handleBook = async () => {
         if (!formData.name || !formData.phone || !formData.date || !bookingEx) {
             tg?.showAlert('Пожалуйста, заполните все поля');
+            return;
+        }
+
+        const telegram_id = tg?.initDataUnsafe?.user?.id;
+        if (!telegram_id) {
+            tg?.showAlert('Ошибка: Telegram ID не найден. Попробуйте перезапустить приложение.');
             return;
         }
 
@@ -79,8 +85,27 @@ export default function PublicCatalog({ t, lang, initialExcursionId }: { t: any,
             tourDate: formData.date
         };
 
-        tg?.sendData(JSON.stringify(bookingData));
-        setTimeout(() => tg?.close(), 100);
+        try {
+            const response = await fetch('/api/book', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    telegram_id,
+                    username: tg?.initDataUnsafe?.user?.username,
+                    data: bookingData
+                })
+            });
+
+            if (response.ok) {
+                tg?.showAlert(lang === 'ru' ? '✅ Заявка успешно отправлена! Менеджер свяжется с вами.' : '✅ Request sent successfully! Manager will contact you.');
+                setTimeout(() => tg?.close(), 100);
+            } else {
+                tg?.showAlert('❌ Ошибка при отправке заявки. Попробуйте позже.');
+            }
+        } catch (err) {
+            console.error('Booking API Error:', err);
+            tg?.showAlert('❌ Ошибка сети. Проверьте интернет-соединение.');
+        }
         
         setBookingEx(null);
     };

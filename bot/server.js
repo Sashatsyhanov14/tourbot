@@ -46,6 +46,33 @@ app.post('/api/send-qr', async (req, res) => {
     }
 });
 
+// API endpoint for Mini App bookings (Alternative to tg.sendData)
+app.post('/api/book', async (req, res) => {
+    try {
+        const { telegram_id, data } = req.body;
+        if (!telegram_id || !data) return res.status(400).json({ error: 'Missing data' });
+
+        console.log(`[API_BOOK] Received booking from ${telegram_id}`);
+
+        // Shim Telegraf context to reuse handleWebAppData
+        const shimCtx = {
+            from: { id: telegram_id, username: req.body.username || null },
+            reply: async (text, extra) => {
+                console.log(`[API_BOOK_REPLY] to ${telegram_id}: ${text}`);
+                try { await bot.telegram.sendMessage(telegram_id, text, extra); } catch (e) {}
+            },
+            telegram: bot.telegram,
+            botInfo: bot.botInfo
+        };
+
+        await bot.handleWebAppData(shimCtx, JSON.stringify(data));
+        res.json({ success: true });
+    } catch (err) {
+        console.error('API Book Error:', err);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
 // Any other request serves the React app
 app.get('*', (req, res) => {
     res.sendFile(path.join(webappDistPath, 'index.html'));
