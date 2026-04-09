@@ -227,18 +227,14 @@ bot.start(async (ctx) => {
         // Cache translated QR button text for detection later
         userQrBtnCache[telegramId] = qrBtn;
 
-        // Очистка старой клавиатуры
+        // Remove any existing keyboard
         try {
             const k = await ctx.reply('…', Markup.removeKeyboard());
             await bot.telegram.deleteMessage(ctx.chat.id, k.message_id);
         } catch (e) { }
 
-        await ctx.reply(welcomeText1,
-            Markup.keyboard([
-                [Markup.button.webApp(webappBtn, `${process.env.WEBAPP_URL || ''}?uid=${telegramId}`)],
-                [qrBtn]
-            ]).resize()
-        );
+        await ctx.reply(welcomeText1);
+
         console.log(`[START] Welcome Part 1 sent to ${username}`);
 
         // Задержанное 2-е сообщение
