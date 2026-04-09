@@ -1,13 +1,13 @@
 module.exports = {
   apps: [
     {
-      name: 'bot3',
+      name: 'bot2',
       script: 'npm',
       args: 'start',
       cwd: './bot',
       env: {
         NODE_ENV: 'production',
-        PORT: 3003,
+        PORT: 3002,
       },
     },
   ],
