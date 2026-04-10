@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const bot = require('./index');
+const { bot, handleWebAppData } = require('./index');
 const dotenv = require('dotenv');
 
 dotenv.config();
@@ -65,7 +65,7 @@ app.post('/api/book', async (req, res) => {
             botInfo: bot.botInfo
         };
 
-        await bot.handleWebAppData(shimCtx, JSON.stringify(data));
+        await handleWebAppData(shimCtx, JSON.stringify(data));
         res.json({ success: true });
     } catch (err) {
         console.error('API Book Error:', err);
@@ -98,3 +98,5 @@ app.listen(PORT, () => {
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
+
+module.exports = app;

@@ -260,7 +260,7 @@ bot.start(async (ctx) => {
             });
             user = newUser;
         } else {
-            await supabase.from('users').update({ language_code: lang }).eq('telegram_id', telegramId).catch(() => {});
+            try { await supabase.from('users').update({ language_code: lang }).eq('telegram_id', telegramId); } catch (e) {}
             if (startPayload && !isNaN(startPayload) && !user.referrer_id) {
                 const rId = parseInt(startPayload);
                 if (rId !== telegramId) {
@@ -435,7 +435,7 @@ bot.on('text', async (ctx) => {
         if (langMatch) {
             const newLang = langMatch[1].toLowerCase();
             userLangCache[telegramId] = newLang;
-            await supabase.from('users').update({ language_code: newLang }).eq('telegram_id', telegramId).catch(() => {});
+            try { await supabase.from('users').update({ language_code: newLang }).eq('telegram_id', telegramId); } catch (e) {}
         }
 
         const exMatch = aiResponse.match(/\[EXCURSION_ID:\s*([a-zA-Z0-9_-]+)\]/i);
@@ -473,4 +473,4 @@ async function sendExcursionPhotos(telegramId, ex) {
 bot.launch().then(() => console.log('Bot running...'));
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
-module.exports = bot;
+module.exports = { bot, handleWebAppData };
