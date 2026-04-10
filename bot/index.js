@@ -137,7 +137,7 @@ bot.action(/^cancel_req_(.+)$/, async (ctx) => {
     const managerId = ctx.from.id;
 
     const { data: manager } = await getUser(managerId);
-    if (!manager || (manager.role !== 'founder' && manager.role !== 'manager')) {
+    if (!manager || (manager.role !== 'founder' && manager.role !== 'manager' && manager.role !== 'admin')) {
         return ctx.answerCbQuery('❌ У вас нет прав.', { show_alert: true });
     }
 
