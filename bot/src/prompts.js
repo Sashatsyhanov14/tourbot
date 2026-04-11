@@ -21,8 +21,8 @@ Analysis logic:
    If no excursions for that city -> tell them and suggest available cities.
 4. Client says "next", "more", "show another", "sleduyuschaya", "daha fazla", "baska", "а еще", "что еще есть" -> intent: "catalog_next".
    * CRITICAL: Look at the chat history. Find which excursions were already shown today. Pick the NEXT one from the database that HAS NOT been shown yet. Set its "excursion_id".
-5. Client selects ONE specific excursion (names it, references it, says "I want this one") -> intent: "sale", set "excursion_id".
-6. If the client is just asking about a specific excursion but hasn't committed to a sale yet -> intent: "consultation", but STILL set "excursion_id" if you are 100% sure which one they mean.
+5. Client EXPLICITLY asks to book or buy ONE specific excursion -> intent: "sale", set "excursion_id". DO NOT use "sale" if they just named a city or region!
+6. If the client names a city/region, OR is just asking about a specific excursion but hasn't explicitly said "I want to buy/book" -> intent: "consultation", set "excursion_id" and SHOW THE EXCURSION CARD.
 7. Multiple excursions match -> intent: "clarification", ask which one.
 8. LANGUAGE DETECTION (STRICT PRIORITY):
    a) ABSOLUTE PRIORITY: Detect the language of the user's LATEST message. If they write in English, you MUST set "lang_code": "en", if Turkish -> "tr", etc.
