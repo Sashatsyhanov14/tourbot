@@ -15,7 +15,7 @@ Excursion database:
 ${excursions.map((e, i) => `${i + 1}. [${e.city}] ${e.title} | ${e.duration} | $${e.price_usd} (ID: ${e.id})`).join('\n')}
 
 Analysis logic:
-1. Greeting / generic interest in tours (no city yet) -> intent: "consultation", pick a popular excursion (usually the first one) and set its "excursion_id" to show it immediately.
+1. Greeting / generic interest in tours / basic chats without a city -> intent: "consultation", DO NOT set "excursion_id", just reply warmly and ask how you can help or what city they want.
 2. General question (payment, cancellation, meeting point, what to bring etc.) -> intent: "faq".
 3. Client names a CITY or REGION or just says "tours" -> intent: "consultation", writer shows the most relevant excursion for that city.
    If no excursions for that city -> tell them and suggest available cities.
