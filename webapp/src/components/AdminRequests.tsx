@@ -19,10 +19,14 @@ const AdminRequests: React.FC<{ t?: any }> = () => {
 
     const fetchRequests = async () => {
         setLoading(true);
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from('requests')
-            .select('*, users(username, telegram_id)')
+            .select('*, users!requests_user_id_fkey(username, telegram_id)')
             .order('created_at', { ascending: false });
+            
+        if (error) {
+            console.error("Supabase fetch error:", error);
+        }
         setRequests(data || []);
         setLoading(false);
     };
