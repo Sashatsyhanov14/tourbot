@@ -5,6 +5,7 @@ const AdminRequests: React.FC<{ t?: any }> = () => {
     const [requests, setRequests] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<'all' | 'new' | 'deals' | 'archive'>('all');
+    const [showAll, setShowAll] = useState(false);
 
     useEffect(() => {
         fetchRequests();
@@ -29,11 +30,6 @@ const AdminRequests: React.FC<{ t?: any }> = () => {
         }
         setRequests(data || []);
         setLoading(false);
-    };
-
-    const updateStatus = async (id: string, status: string) => {
-        await supabase.from('requests').update({ status }).eq('id', id);
-        fetchRequests();
     };
 
     const getStatusInfo = (status: string) => {
@@ -89,7 +85,7 @@ const AdminRequests: React.FC<{ t?: any }> = () => {
                 </div>
             ) : (
                 <div className="space-y-4">
-                    {filteredRequests.map(req => {
+                    {filteredRequests.slice(0, showAll ? undefined : 5).map(req => {
                         const s = getStatusInfo(req.status);
                         return (
                             <div key={req.id} className="bg-[#1a1a1d] p-0 rounded-3xl border border-white/5 overflow-hidden transition-all hover:border-white/10 group">
@@ -105,11 +101,11 @@ const AdminRequests: React.FC<{ t?: any }> = () => {
                                     </div>
                                 </div>
 
-                                <div className="p-5 space-y-4">
+                                <div className="p-4 space-y-3">
                                     {/* Main Info */}
                                     <div className="flex justify-between items-start gap-4">
                                         <div className="flex-1 min-w-0">
-                                            <h4 className="font-black text-white text-lg leading-tight group-hover:text-primary transition-colors">{req.excursion_title}</h4>
+                                            <h4 className="font-extrabold text-white text-base leading-tight group-hover:text-primary transition-colors">{req.excursion_title}</h4>
                                             <div className="flex items-center gap-2 mt-1">
                                                 <span className="text-[10px] font-bold text-slate-500">
                                                     {req.users?.username ? (req.users.username.includes(' ') || req.users.username !== req.users.username.toLowerCase() ? req.users.username : `@${req.users.username}`) : 'user'}
@@ -119,63 +115,41 @@ const AdminRequests: React.FC<{ t?: any }> = () => {
                                             </div>
                                         </div>
                                         <div className="text-right flex-shrink-0">
-                                            <p className="text-2xl font-black text-primary tracking-tighter">${req.price_usd?.toLocaleString()}</p>
-                                            <p className="text-[8px] text-slate-600 font-black uppercase tracking-widest">цена тура</p>
+                                            <p className="text-xl font-black text-primary tracking-tighter">${req.price_usd?.toLocaleString()}</p>
                                         </div>
                                     </div>
 
                                     {/* Detail Grid */}
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="bg-black/20 p-3 rounded-2xl border border-white/5 space-y-2">
-                                            <div className="flex items-center gap-2 text-slate-500 uppercase tracking-widest text-[8px] font-black">
-                                                <span className="material-symbols-outlined text-[12px]">calendar_month</span>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="bg-black/20 p-2 rounded-xl border border-white/5 flex flex-col justify-center">
+                                            <div className="flex items-center gap-1 text-slate-500 uppercase tracking-widest text-[8px] font-black mb-1">
+                                                <span className="material-symbols-outlined text-[10px]">calendar_month</span>
                                                 Дата выезда
                                             </div>
-                                            <p className="text-xs font-bold text-slate-200">{req.tour_date}</p>
+                                            <p className="text-[11px] font-bold text-slate-200 truncate">{req.tour_date}</p>
                                         </div>
-                                        <div className="bg-black/20 p-3 rounded-2xl border border-white/5 space-y-2">
-                                            <div className="flex items-center gap-2 text-slate-500 uppercase tracking-widest text-[8px] font-black">
-                                                <span className="material-symbols-outlined text-[12px]">hotel</span>
+                                        <div className="bg-black/20 p-2 rounded-xl border border-white/5 flex flex-col justify-center">
+                                            <div className="flex items-center gap-1 text-slate-500 uppercase tracking-widest text-[8px] font-black mb-1">
+                                                <span className="material-symbols-outlined text-[10px]">hotel</span>
                                                 Отель / Вилла
                                             </div>
-                                            <p className="text-xs font-bold text-slate-200 truncate">{req.hotel_name}</p>
+                                            <p className="text-[11px] font-bold text-slate-200 truncate">{req.hotel_name}</p>
                                         </div>
-                                    </div>
-
-                                    {/* Actions */}
-                                    <div className="flex gap-2 pt-2">
-                                        {req.status === 'new' && (
-                                            <button 
-                                                onClick={() => updateStatus(req.id, 'contacted')} 
-                                                className="flex-1 py-3 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-2xl text-[10px] font-black uppercase tracking-wider hover:bg-blue-500/20 transition-all flex items-center justify-center gap-2"
-                                            >
-                                                <span className="material-symbols-outlined text-[16px]">chat</span>
-                                                Связался
-                                            </button>
-                                        )}
-                                        {req.status !== 'done' && (
-                                            <button 
-                                                onClick={() => updateStatus(req.id, 'done')} 
-                                                className="flex-1 py-3 bg-green-500/10 text-green-400 border border-green-500/20 rounded-2xl text-[10px] font-black uppercase tracking-wider hover:bg-green-500/20 transition-all flex items-center justify-center gap-2"
-                                            >
-                                                <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                                                ЗАКРЫТЬ СДЕЛКУ
-                                            </button>
-                                        )}
-                                        {req.status !== 'cancelled' && (
-                                            <button 
-                                                onClick={() => updateStatus(req.id, 'cancelled')} 
-                                                className="px-4 py-3 bg-red-500/10 text-red-500 border border-red-500/20 rounded-2xl hover:bg-red-500/20 transition-all flex items-center justify-center"
-                                                title="Отменить"
-                                            >
-                                                <span className="material-symbols-outlined text-[16px]">close</span>
-                                            </button>
-                                        )}
                                     </div>
                                 </div>
                             </div>
                         );
                     })}
+                    
+                    {filteredRequests.length > 5 && (
+                        <button
+                            onClick={() => setShowAll(!showAll)}
+                            className="w-full py-4 mt-2 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/10 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-white transition-all flex items-center justify-center gap-2"
+                        >
+                            <span>{showAll ? 'Свернуть' : `Показать еще ${filteredRequests.length - 5}`}</span>
+                            <span className="material-symbols-outlined text-[16px]">{showAll ? 'expand_less' : 'expand_more'}</span>
+                        </button>
+                    )}
                 </div>
             )}
         </div>
