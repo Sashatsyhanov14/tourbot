@@ -446,12 +446,14 @@ bot.on('text', async (ctx) => {
             const exId = exMatch[1].trim();
             lastShownExcursion[telegramId] = exId;
             const ex = excursions.find(e => e.id === exId);
-            if (ex) await sendExcursionPhotos(telegramId, ex);
+            
             if (intentMatch && intentMatch[1].toLowerCase() === 'sale') {
                 await reply(ctx, finalResponse, { parse_mode: 'Markdown' });
                 await startBookingStepper(ctx, telegramId, exId);
                 await saveMessage(telegramId, 'assistant', finalResponse);
                 return;
+            } else {
+                if (ex) await sendExcursionPhotos(telegramId, ex);
             }
         }
 
