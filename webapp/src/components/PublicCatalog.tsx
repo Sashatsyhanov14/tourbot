@@ -115,11 +115,21 @@ export default function PublicCatalog({ t, lang, initialExcursionId }: { t: any,
         setBookingEx(null);
     };
 
+    const [selectedCity, setSelectedCity] = useState<string | null>(null);
+
     const filtered = excursions.filter(ex => {
         const title = (lang === 'ru' ? ex.title : (ex as any)[`title_${lang}`]) || ex.title;
         const city = (lang === 'ru' ? ex.city : (ex as any)[`city_${lang}`]) || ex.city;
-        return title.toLowerCase().includes(search.toLowerCase()) || city.toLowerCase().includes(search.toLowerCase());
+        
+        const matchesSearch = title.toLowerCase().includes(search.toLowerCase()) || city.toLowerCase().includes(search.toLowerCase());
+        const matchesCity = !selectedCity || city === selectedCity;
+        
+        return matchesSearch && matchesCity;
     });
+
+    const uniqueCities = Array.from(new Set(excursions.map(ex => 
+        (lang === 'ru' ? ex.city : (ex as any)[`city_${lang}`]) || ex.city
+    ))).sort();
 
     if (loading) return <div className="text-center p-10 animate-pulse text-slate-400">Загрузка каталога...</div>;
 
@@ -133,7 +143,7 @@ export default function PublicCatalog({ t, lang, initialExcursionId }: { t: any,
         if (c.includes('viet') || c.includes('вьет')) return { emoji: '🇻🇳', code: 'vn' };
         if (c.includes('isra') || c.includes('изра') || c.includes('israil')) return { emoji: '🇮🇱', code: 'il' };
         if (c.includes('emir') || c.includes('оаэ') || c.includes('bae') || c.includes('dubai') || c.includes('uae')) return { emoji: '🇦🇪', code: 'ae' };
-        if (c.includes('egypt') || c.includes('егип') || c.includes('mısır')) return { emoji: '🇪🇬', code: 'eg' };
+        if (c.includes('egypt') || c.includes('егип') || c.includes('mısыр')) return { emoji: '🇪🇬', code: 'eg' };
         if (c.includes('georg') || c.includes('груз')) return { emoji: '🇬🇪', code: 'ge' };
         if (c.includes('armen') || c.includes('армен')) return { emoji: '🇦🇲', code: 'am' };
         if (c.includes('kazak') || c.includes('казак')) return { emoji: '🇰🇿', code: 'kz' };
@@ -182,8 +192,9 @@ export default function PublicCatalog({ t, lang, initialExcursionId }: { t: any,
 
     return (
         <div className="space-y-6 pb-10">
-            {/* Search Bar */}
-            <div className="sticky top-0 z-20 bg-[#0f0f11]/80 backdrop-blur-md pt-2 pb-4 px-1">
+            {/* Search & Filter Header */}
+            <div className="sticky top-0 z-20 bg-[#0f0f11]/90 backdrop-blur-xl pt-2 pb-5 px-1 space-y-4 shadow-2xl">
+                {/* Search Bar */}
                 <div className="relative">
                     <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-[20px]">search</span>
                     <input
@@ -193,6 +204,25 @@ export default function PublicCatalog({ t, lang, initialExcursionId }: { t: any,
                         onChange={e => setSearch(e.target.value)}
                         className="w-full bg-[#1a1a1d] border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm focus:border-primary/50 outline-none transition-all placeholder:text-slate-600 shadow-xl"
                     />
+                </div>
+
+                {/* City Filter Chips */}
+                <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1 px-1">
+                    <button
+                        onClick={() => setSelectedCity(null)}
+                        className={`whitespace-nowrap px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border ${!selectedCity ? 'bg-primary text-black border-primary shadow-[0_4px_12px_rgba(208,188,255,0.3)]' : 'bg-white/5 text-slate-500 border-white/5 hover:border-white/20'}`}
+                    >
+                        {lang === 'ru' ? 'Все' : 'All'}
+                    </button>
+                    {uniqueCities.map(city => (
+                        <button
+                            key={city}
+                            onClick={() => setSelectedCity(city)}
+                            className={`whitespace-nowrap px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border ${selectedCity === city ? 'bg-primary text-black border-primary shadow-[0_4px_12px_rgba(208,188,255,0.3)]' : 'bg-white/5 text-slate-500 border-white/5 hover:border-white/20'}`}
+                        >
+                            {city}
+                        </button>
+                    ))}
                 </div>
             </div>
 
